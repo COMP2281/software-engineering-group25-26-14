@@ -1,10 +1,3 @@
-# 👉 讀 OBD-II CSV
-# 👉 清洗數據
-# 👉 插值補 missing
-# 👉 過濾異常值
-# 👉 計算 L/100km
-# 👉 儲存 cleaned CSV
-# 👉 合併成一個總 
 import pandas as pd
 import glob
 import os
@@ -128,6 +121,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 
