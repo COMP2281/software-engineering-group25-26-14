@@ -1,15 +1,3 @@
-#  讀 OBD-II CSV
-#  驗證數據
-#  分 trip
-#  識別車輛
-#  根據車型用不同 threshold
-#  清洗數據
-#  計油耗
-#  偵測不良駕駛行為
-#  計效率分數
-#  生成 coaching 建議
-#  儲存 cleaned data + metadata
-
 # names are changed into RPM    Speed   MAF Throttle    Time
 
 import pandas as pd
@@ -557,5 +545,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
