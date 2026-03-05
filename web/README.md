@@ -10,15 +10,17 @@ There are two parts:
 - Node.js 18+ and npm
 - Python 3.10+ (with `pip`)
 
-## 1. Clone the project
+## 1. Clone the project and navigate to branch
 
 ```powershell
-git clone https://github.com/COMP2281/software-engineering-group25-26-14/tree/Francis
+git clone https://github.com/COMP2281/software-engineering-group25-26-14.git
+cd software-engineering-group25-26-14/
+git checkout Francis
 ```
 
 ## 2. Set up and run the backend (`api`)
 
-Open a terminal in the root and run:
+Open a terminal in the project root and run:
 
 ### Windows (PowerShell)
 
@@ -39,7 +41,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ### macOS/Linux
 
 ```bash
-cd api
+cd web\api
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
