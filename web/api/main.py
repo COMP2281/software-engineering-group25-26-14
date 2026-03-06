@@ -107,7 +107,8 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
     #analysis_results = insert_analysis_function(files)
 
     # test code
-    await asyncio.sleep(10)
+    await asyncio.sleep(1)
+    import random
     test_data = [
         {
             "trip_id": "trip1",
@@ -115,6 +116,7 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
             "end_time": "2024-01-01T08:30:00",
             "vehicle_make": "Seat",
             "vehicle_model": "Leon",
+            "efficiency_score": random.randint(0, 100),
         },
         {
             "trip_id": "trip2",
@@ -122,6 +124,7 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
             "end_time": "2024-01-02T09:45:00",
             "vehicle_make": "Volkswagen",
             "vehicle_model": "Golf",
+            "efficiency_score": random.randint(0, 100),
         }
     ]
 

@@ -23,6 +23,12 @@ export default function App() {
 
   const [analysisMessage, setAnalysisMessage] = useState("");  // message to show after analysis (success or error)
 
+  const [trips, setTrips] = useState([]);  // array of trip objects
+  const [score, setScore] = useState(null);  // average score of all trips
+
+  const scoreLowThreshold = 50;  // below this score, show red
+  const scoreHighThreshold = 80;  // above this score, show green
+
   // sync theme
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -34,6 +40,8 @@ export default function App() {
     setFiles(Array.from(event.target.files));  // update files array
     setUploadResults([]);  // reset previous upload results
     setUploadState("idle");  // reset upload state
+    setAllUploadsSuccessful(false);  // reset overall upload success state
+    setAnalysisMessage("");  // reset analysis message
   };
 
   // upload files
@@ -72,28 +80,52 @@ export default function App() {
         setUploadState("analysing");
 
         // call analysis endpoint
-        try {
-          const analyseResponse = await fetch("http://localhost:5000/analyse", {
-            method: "POST",
-            body: formData,
-          });
-
-          const analyseData = await analyseResponse.json();
-          if (analyseData?.message) {
-            setAnalysisMessage(`${analyseData.message}. The data from the analysis would be used for visualisations etc on other dashboard widgets TBA`);
-          }
-        } catch (error) {
-          setAnalysisMessage("Analysis failed: " + error.message);
-        }
+        await runAnalysis(formData);
       }
+
     } catch (error) {
       // handle network or unexpected errors
       setUploadResults([
         { name: "Upload failed", status: "Unsuccessful", error: error.message },
-      ]);
+      ])
+      setAllUploadsSuccessful(false);
     } finally {
-    // always set done at the end
-    setUploadState("done");
+      // always set done at the end
+      setUploadState("done");
+    }
+  };
+
+  // analayse files
+  const runAnalysis = async (formData) => {
+    // wrap api call in try-catch to handle network errors
+    try {
+      const analysisResponse = await fetch("http://localhost:5000/analyse", {
+        method: "POST",
+        body: formData,
+      });
+
+      const analysisData = await analysisResponse.json();  // wait for response and parse as JSON
+
+      if (analysisData?.message) {
+        setAnalysisMessage(
+          `${analysisData.message}. The data from the analysis would be used for visualisations etc on other dashboard widgets TBA`
+        );
+      }
+
+      // update trips state
+      const tripData = analysisData.trips;
+      setTrips(tripData);
+
+      // compute average score across all trips and update score state
+      const totalScore = analysisData.trips.reduce(
+        (acc, trip) => acc + trip.efficiency_score,0
+      );
+      const averageScore = Math.round(totalScore / analysisData.trips.length);
+      setScore(averageScore);
+
+    } catch (error) {
+      // handle network or unexpected errors
+      setAnalysisMessage("Analysis failed: " + error.message);
     }
   };
 
@@ -126,10 +158,10 @@ export default function App() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <main className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
 
         {/* Upload data section */}
-        <div className="rounded border border-slate-300 bg-white p-6 shadow dark:border-slate-700 dark:bg-slate-800">
+        <div className="rounded border border-slate-300 bg-white p-6 shadow h-[calc(100vh-120px)] overflow-y-auto dark:border-slate-700 dark:bg-slate-800">
 
           <h2 className="text-lg font-semibold mb-2">Upload Data</h2>
 
@@ -260,6 +292,81 @@ export default function App() {
             </div>
           )}
 
+
+
+        </div>
+
+        {/* Average efficiency score widget */}
+        <div className="rounded border border-slate-300 bg-white p-6 shadow flex flex-col items-center justify-center dark:border-slate-700 dark:bg-slate-800">
+
+          <h2 className="text-lg font-semibold mb-4">Average Efficiency Score</h2>
+
+          <div className="flex flex-col items-center justify-center">
+
+            {/* Gauge */}
+            {/* modified from https://preline.co/docs/progress.html#gauge-progress */}
+            <div className="relative w-40 h-40">
+              <svg
+                className="w-full h-full rotate-[135deg]"
+                viewBox="0 0 36 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Background arc */}
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="16"
+                  fill="none"
+                  className="stroke-current text-slate-300 dark:text-slate-700"
+                  strokeWidth="1.5"
+                  strokeDasharray="75 100"
+                  strokeLinecap="round"
+                />
+
+                {/* Score arc */}
+                {/* Color based on score thresholds */}
+                {score !== null && (
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="16"
+                    fill="none"
+                    strokeWidth="1.5"
+                    strokeDasharray={`${score * 0.75} 100`}
+                    strokeLinecap="round"
+                    className={`stroke-current ${
+                      score < scoreLowThreshold
+                        ? 'text-red-500'
+                        : score < scoreHighThreshold
+                        ? 'text-yellow-400'
+                        : 'text-green-500'
+                    }`}
+                  />
+                )}
+              </svg>
+
+              {/* Score text */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                {score === null ? (
+                  <span className="text-slate-400 text-sm">No score yet</span>
+                ) : (
+                  <>
+                    <span
+                      className={`text-3xl font-bold ${
+                        score < scoreLowThreshold
+                          ? 'text-red-500'
+                          : score < scoreHighThreshold
+                          ? 'text-yellow-400'
+                          : 'text-green-500'
+                      }`}
+                    >
+                      {score}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
       </main>
