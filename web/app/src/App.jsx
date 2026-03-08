@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import UploadWidget from "./components/UploadWidget";
 import ScoreWidget from "./components/ScoreWidget";
+import FuelEconomyWidget from "./components/FuelEconomyWidget";
 
 // import API functions
-import { uploadFiles, analyseTrips } from "./services/api";
+import { uploadFiles, analyseTrips } from "./services/Api";
 
 export default function App() {
   // dark mode state
@@ -38,6 +39,8 @@ export default function App() {
 
   const scoreLowThreshold = 50;  // below this score, show red
   const scoreHighThreshold = 80;  // above this score, show green
+
+  const [fuelEconomy, setFuelEconomy] = useState(null); // average fuel economy across all trips
 
   // sync theme
   useEffect(() => {
@@ -127,6 +130,15 @@ export default function App() {
       const averageScore = Math.round(totalScore / analysisData.trips.length);
       setScore(averageScore);
 
+      // compute average fuel economy across all trips and update fuelEconomy state
+      const totalFuelEconomy = analysisData.trips.reduce(
+        (acc, trip) => acc + trip.average_fuel_economy,
+        0
+      );
+
+      const avgFuelEconomy = totalFuelEconomy / analysisData.trips.length;
+      setFuelEconomy(avgFuelEconomy.toFixed(2));
+
     } catch (error) {
       // handle network or unexpected errors
       setAnalysisMessage("Analysis failed: " + error.message);
@@ -152,7 +164,7 @@ export default function App() {
         onToggleTheme={handleThemeToggle}
       />
 
-      <main className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+      <main className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
 
         <UploadWidget
           files={files}
@@ -163,13 +175,22 @@ export default function App() {
           disableUploadButton={disableUploadButton}
           onFileChange={handleFileChange}
           onUpload={handleUpload}
+          className="h-auto md:h-[calc(100vh-120px)]"
         />
 
-        <ScoreWidget
-          score={score}
-          scoreLowThreshold={scoreLowThreshold}
-          scoreHighThreshold={scoreHighThreshold}
-        />
+        <div className="flex flex-col gap-6 md:h-[calc(100vh-120px)]">
+          <ScoreWidget
+            score={score}
+            scoreLowThreshold={scoreLowThreshold}
+            scoreHighThreshold={scoreHighThreshold}
+            className="flex-1"
+          />
+
+          <FuelEconomyWidget
+            fuelEconomy={fuelEconomy}
+            className="flex-1"
+          />
+        </div>
 
       </main>
     </div>

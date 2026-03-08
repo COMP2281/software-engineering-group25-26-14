@@ -1,12 +1,17 @@
-export default function ScoreWidget({ score, scoreLowThreshold, scoreHighThreshold }) {
+export default function ScoreWidget({ 
+    score, 
+    scoreLowThreshold, 
+    scoreHighThreshold,
+    className
+ }) {
   return (
-    <div className="rounded border border-slate-300 bg-white p-6 shadow flex flex-col items-center justify-center dark:border-slate-700 dark:bg-slate-800">
+    <div className={`rounded border border-slate-300 bg-white p-6 shadow flex flex-col items-center dark:border-slate-700 dark:bg-slate-800 ${className}`}>
 
       <h2 className="text-lg font-semibold mb-4">Average Efficiency Score</h2>
 
         {/* Gauge */}
         {/* modified from https://preline.co/docs/progress.html#gauge-progress */}
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex-1 flex flex-col items-center justify-center w-full">
 
             <div className="relative w-40 h-40">
             <svg

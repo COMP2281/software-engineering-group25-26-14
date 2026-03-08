@@ -7,9 +7,10 @@ export default function UploadWidget({
     disableUploadButton,
     onFileChange,
     onUpload,
+    className
 }) {
     return (
-        <div className="rounded border border-slate-300 bg-white p-6 shadow h-[calc(100vh-120px)] overflow-y-auto dark:border-slate-700 dark:bg-slate-800">
+        <div className={`rounded border border-slate-300 bg-white p-6 shadow overflow-y-auto dark:border-slate-700 dark:bg-slate-800 ${className}`}>
 
         <h2 className="text-lg font-semibold mb-2">Upload Data</h2>
 

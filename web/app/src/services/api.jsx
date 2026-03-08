@@ -8,10 +8,6 @@ export async function uploadFiles(formData) {
     body: formData,
   });
 
-  if (!response.ok) {
-    throw new Error("Upload request failed");
-  }
-
   return response.json();
 }
 
