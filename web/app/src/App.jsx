@@ -10,7 +10,7 @@ import NewWidget from "./components/NewWidget";
 import Sidebar from "./components/Sidebar";
 
 // import API functions
-import { uploadFiles, analyseTrips } from "./services/Api";
+import { uploadFiles, analyseTrips } from "./services/api";
 
 export default function App() {
   // dark mode state
@@ -54,6 +54,8 @@ export default function App() {
   });
 
   const [currentPage, setCurrentPage] = useState("dashboard"); // current page for sidebar navigation
+
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false); // state to control mobile sidebar visibility
 
   // sync theme
   useEffect(() => {
@@ -211,15 +213,18 @@ export default function App() {
       <Sidebar 
         currentPage={currentPage} 
         setCurrentPage={setCurrentPage} 
+        mobileOpen={mobileSidebarOpen} 
+        setMobileOpen={setMobileSidebarOpen} 
       />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col">
-        <Navbar
-          isDarkMode={isDarkMode}
-          onToggleTheme={handleThemeToggle}
-          currentPage={currentPage}
-        />
+      <Navbar
+        isDarkMode={isDarkMode}
+        onToggleTheme={handleThemeToggle}
+        setMobileOpen={setMobileSidebarOpen}
+        currentPage={currentPage}
+      />
 
         <main className="p-6 flex-1 overflow-auto">
           {currentPage === "dashboard" && (
