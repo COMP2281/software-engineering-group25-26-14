@@ -7,6 +7,7 @@ import ScoreWidget from "./components/ScoreWidget";
 import FuelEconomyWidget from "./components/FuelEconomyWidget";
 import InefficientEventsWidget from "./components/InefficientEventsWidget";
 import NewWidget from "./components/NewWidget";
+import Sidebar from "./components/Sidebar";
 
 // import API functions
 import { uploadFiles, analyseTrips } from "./services/Api";
@@ -51,6 +52,8 @@ export default function App() {
     harsh_throttle: 0,
     total: null,
   });
+
+  const [currentPage, setCurrentPage] = useState("dashboard"); // current page for sidebar navigation
 
   // sync theme
   useEffect(() => {
@@ -203,56 +206,69 @@ export default function App() {
 
   // main render
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 transition-colors flex flex-col dark:bg-slate-900 dark:text-slate-100">
-
-      <Navbar
-        isDarkMode={isDarkMode}
-        onToggleTheme={handleThemeToggle}
+    <div className="min-h-screen flex bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      {/* Sidebar */}
+      <Sidebar 
+        currentPage={currentPage} 
+        setCurrentPage={setCurrentPage} 
       />
 
-      <main className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-
-        <UploadWidget
-          files={files}
-          uploadResults={uploadResults}
-          uploadState={uploadState}
-          allUploadsSuccessful={allUploadsSuccessful}
-          analysisMessage={analysisMessage}
-          disableUploadButton={disableUploadButton}
-          onFileChange={handleFileChange}
-          onUpload={handleUpload}
-          className="h-auto md:h-[calc(100vh-120px)] md:min-h-[704px]"
+      {/* Main content */}
+      <div className="flex-1 flex flex-col">
+        <Navbar
+          isDarkMode={isDarkMode}
+          onToggleTheme={handleThemeToggle}
+          currentPage={currentPage}
         />
 
-        <div className="flex flex-col gap-6 md:h-[calc(100vh-120px)]">
-          <ScoreWidget
-            score={score}
-            scoreLowThreshold={scoreLowThreshold}
-            scoreHighThreshold={scoreHighThreshold}
-            className="flex-1 md:min-h-[340px]"
-          />
+        <main className="p-6 flex-1 overflow-auto">
+          {currentPage === "dashboard" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <UploadWidget
+                files={files}
+                uploadResults={uploadResults}
+                uploadState={uploadState}
+                allUploadsSuccessful={allUploadsSuccessful}
+                analysisMessage={analysisMessage}
+                disableUploadButton={disableUploadButton}
+                onFileChange={handleFileChange}
+                onUpload={handleUpload}
+                className="h-auto md:h-[calc(100vh-120px)] md:min-h-[704px]"
+              />
 
-          <FuelEconomyWidget
-            fuelEconomy={fuelEconomy}
-            className="flex-1 md:min-h-[340px]"
-          />
-        </div>
+              <div className="flex flex-col gap-6">
+                <ScoreWidget
+                  score={score}
+                  scoreLowThreshold={scoreLowThreshold}
+                  scoreHighThreshold={scoreHighThreshold}
+                  className="flex-1 md:min-h-[340px]"
+                />
+                <FuelEconomyWidget
+                  fuelEconomy={fuelEconomy}
+                  className="flex-1 md:min-h-[340px]"
+                />
+              </div>
 
-      <div className="flex flex-col gap-6 md:h-[calc(100vh-120px)]">
-        <InefficientEventsWidget
-          totalEvents={eventCounts.total}
-          highRPM={eventCounts.high_rpm}
-          hardBraking={eventCounts.hard_braking}
-          harshThrottle={eventCounts.harsh_throttle}
-          className="flex-1 md:min-h-[340px]"
-        />
-        <NewWidget
-          className="flex-1 md:min-h-[340px]"
-        />
+              <div className="flex flex-col gap-6">
+                <InefficientEventsWidget
+                  totalEvents={eventCounts.total}
+                  highRPM={eventCounts.high_rpm}
+                  hardBraking={eventCounts.hard_braking}
+                  harshThrottle={eventCounts.harsh_throttle}
+                  className="flex-1 md:min-h-[340px]"
+                />
+                <NewWidget className="flex-1 md:min-h-[340px]" />
+              </div>
+            </div>
+          )}
+
+          {currentPage === "trips" && (
+            <div className="flex flex-col">
+              <p>This page will show trips</p>
+            </div>
+          )}
+        </main>
       </div>
-
-
-      </main>
     </div>
   );
 }
