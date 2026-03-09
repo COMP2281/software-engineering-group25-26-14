@@ -5,6 +5,8 @@ import Navbar from "./components/Navbar";
 import UploadWidget from "./components/UploadWidget";
 import ScoreWidget from "./components/ScoreWidget";
 import FuelEconomyWidget from "./components/FuelEconomyWidget";
+import InefficientEventsWidget from "./components/InefficientEventsWidget";
+import NewWidget from "./components/NewWidget";
 
 // import API functions
 import { uploadFiles, analyseTrips } from "./services/Api";
@@ -41,6 +43,14 @@ export default function App() {
   const scoreHighThreshold = 80;  // above this score, show green
 
   const [fuelEconomy, setFuelEconomy] = useState(null); // average fuel economy across all trips
+
+  // event counts across all trips
+  const [eventCounts, setEventCounts] = useState({
+    high_rpm: 0,
+    hard_braking: 0,
+    harsh_throttle: 0,
+    total: null,
+  });
 
   // sync theme
   useEffect(() => {
@@ -122,27 +132,63 @@ export default function App() {
       const tripData = analysisData.trips;
       setTrips(tripData);
 
-      // compute average score across all trips and update score state
-      const totalScore = analysisData.trips.reduce(
-        (acc, trip) => acc + trip.efficiency_score,
-        0
-      );
-      const averageScore = Math.round(totalScore / analysisData.trips.length);
-      setScore(averageScore);
+      // update average score state
+      updateAverageScore(tripData);
 
-      // compute average fuel economy across all trips and update fuelEconomy state
-      const totalFuelEconomy = analysisData.trips.reduce(
-        (acc, trip) => acc + trip.average_fuel_economy,
-        0
-      );
+      // update fuel economy state
+      updateFuelEconomy(tripData);
 
-      const avgFuelEconomy = totalFuelEconomy / analysisData.trips.length;
-      setFuelEconomy(avgFuelEconomy.toFixed(2));
+      // update event counts state
+      updateEventCounts(tripData);
 
     } catch (error) {
       // handle network or unexpected errors
       setAnalysisMessage("Analysis failed: " + error.message);
     }
+  };
+
+  // compute and update average score based on trip data
+  const updateAverageScore = (trips) => {
+    const totalScore = trips.reduce(
+      (acc, trip) => acc + trip.efficiency_score,
+      0
+    );
+    const averageScore = Math.round(totalScore / trips.length);
+    setScore(averageScore);
+  };
+
+  // compute and update average fuel economy based on trip data
+  const updateFuelEconomy = (trips) => {
+    const totalFuelEconomy = trips.reduce(
+      (acc, trip) => acc + trip.average_fuel_economy,
+      0
+    );
+    const avgFuelEconomy = totalFuelEconomy / trips.length;
+    setFuelEconomy(avgFuelEconomy.toFixed(2));
+  };
+
+  // compute event counts across all trips and update eventCounts state
+  const updateEventCounts = (trips) => {
+    const counts = {
+      high_rpm: 0,
+      hard_braking: 0,
+      harsh_throttle: 0,
+    };
+    
+    trips.forEach((trip) => {
+      trip.events?.forEach((event) => {
+        if (event.type === "high_rpm") counts.high_rpm++;
+        if (event.type === "hard_braking") counts.hard_braking++;
+        if (event.type === "harsh_throttle") counts.harsh_throttle++;
+      });
+    });
+
+    const total = counts.high_rpm + counts.hard_braking + counts.harsh_throttle;
+
+    setEventCounts({
+      ...counts,
+      total,
+    });
   };
 
   // disable upload button if:
@@ -164,7 +210,7 @@ export default function App() {
         onToggleTheme={handleThemeToggle}
       />
 
-      <main className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+      <main className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
 
         <UploadWidget
           files={files}
@@ -175,7 +221,7 @@ export default function App() {
           disableUploadButton={disableUploadButton}
           onFileChange={handleFileChange}
           onUpload={handleUpload}
-          className="h-auto md:h-[calc(100vh-120px)]"
+          className="h-auto md:h-[calc(100vh-120px)] md:min-h-[704px]"
         />
 
         <div className="flex flex-col gap-6 md:h-[calc(100vh-120px)]">
@@ -183,14 +229,28 @@ export default function App() {
             score={score}
             scoreLowThreshold={scoreLowThreshold}
             scoreHighThreshold={scoreHighThreshold}
-            className="flex-1"
+            className="flex-1 md:min-h-[340px]"
           />
 
           <FuelEconomyWidget
             fuelEconomy={fuelEconomy}
-            className="flex-1"
+            className="flex-1 md:min-h-[340px]"
           />
         </div>
+
+      <div className="flex flex-col gap-6 md:h-[calc(100vh-120px)]">
+        <InefficientEventsWidget
+          totalEvents={eventCounts.total}
+          highRPM={eventCounts.high_rpm}
+          hardBraking={eventCounts.hard_braking}
+          harshThrottle={eventCounts.harsh_throttle}
+          className="flex-1 md:min-h-[340px]"
+        />
+        <NewWidget
+          className="flex-1 md:min-h-[340px]"
+        />
+      </div>
+
 
       </main>
     </div>

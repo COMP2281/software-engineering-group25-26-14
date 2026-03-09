@@ -109,6 +109,7 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
     # test code
     await asyncio.sleep(1)
     import random
+    events = ["high_rpm", "hard_braking", "harsh_throttle"]
     test_data = [
         {
             "trip_id": "trip1",
@@ -117,7 +118,15 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
             "vehicle_make": "Seat",
             "vehicle_model": "Leon",
             "efficiency_score": random.randint(0, 100),
-            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2)
+            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
+            "events": [
+                {
+                    "type": random.choice(events),
+                },
+                {
+                    "type": random.choice(events),
+                }
+            ]
         },
         {
             "trip_id": "trip2",
@@ -126,7 +135,12 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
             "vehicle_make": "Volkswagen",
             "vehicle_model": "Golf",
             "efficiency_score": random.randint(0, 100),
-            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2)
+            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
+            "events": [
+                {
+                    "type": random.choice(events),
+                }
+            ]
         }
     ]
 
