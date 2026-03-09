@@ -1,83 +1,70 @@
 import os
 import json
+import logging
 from typing import List, Dict, Any
-from genai import Client, Credentials
-from genai.schema import TextGenerationParameters
+import ollama
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class GraniteCoachingService:
     """
-    A service class to interact with IBM Granite directly via the IBM Generative AI SDK.
-    This generates driver coaching messages and fuel strategy advice.
+    A service class to interact with IBM Granite locally via Ollama.
+    This generates driver coaching messages and fuel strategy advice without needing an API key
+    or an internet connection.
     """
-    def __init__(self, api_key: str = None, endpoint: str = "https://bam-api.res.ibm.com"):
+    def __init__(self, model_id: str = "granite3.1-dense:8b"):
         """
-        Initialize the IBM Granite coaching service.
+        Initialize the IBM Granite coaching service using local Ollama.
         
         WHAT YOU NEED TO DO:
-        The easiest way to make this work locally without hardcoding your passwords 
-        is to open your terminal (Mac/Linux) and run these two commands before running the python script:
+        Make sure you have Ollama installed and have pulled the model by running:
+        `ollama run granite3.1-dense:8b` in your terminal.
         
-        export GRANITE_API_KEY="your-actual-api-key-here"
-        export GRANITE_API_ENDPOINT="https://us-south.ml.cloud.ibm.com"  <-- (Use this if using Watsonx instead of BAM)
-        
-        :param api_key: IBM Granite API Key (e.g., BAM API key or IBM Cloud API Key)
-        :param endpoint: IBM Granite API endpoint (BAM or Watsonx URL)
+        :param model_id: The local Ollama model to use.
         """
-        # We try to grab the key from the environment variables you exported.
-        self.api_key = api_key or os.environ.get("GRANITE_API_KEY")
-        self.endpoint = endpoint or os.environ.get("GRANITE_API_ENDPOINT", "https://bam-api.res.ibm.com")
-        self.client = None
+        self.model_id = model_id
         
-        # This is the standard open-source Granite model used for conversational chat
-        self.model_id = "ibm/granite-13b-chat-v2" 
-        
-        # If an API key was found, we attempt to authenticate immediately
-        if self.api_key:
-            self._authenticate()
+        # Verify Ollama is running and the model is available
+        self._verify_connection()
 
-    def _authenticate(self):
-        """Initializes the Granite Client using the provided API key."""
+    def _verify_connection(self):
+        """Checks if Ollama is running and the model is pulled locally."""
         try:
-            # We bundle your API key and endpoint URL into a Credentials object
-            credentials = Credentials(api_key=self.api_key, api_endpoint=self.endpoint)
-            # We then create the main Client which will be used to send all prompts to IBM
-            self.client = Client(credentials=credentials)
+            # We list local models to ensure it's installed
+            models = ollama.list()
+            # The 'models' object is a list of model objects, each with a 'model' attribute
+            model_names = [m.model for m in models.models]
+            
+            if not any(self.model_id in name for name in model_names):
+                logging.warning(f"Model '{self.model_id}' not found locally. Please run: 'ollama pull {self.model_id}'")
+            else:
+                logging.info(f"Successfully connected to local Ollama running: {self.model_id}")
         except Exception as e:
-            print(f"Warning: Failed to initialize Granite Client: {e}")
+            logging.error(f"Failed to connect to Ollama. Make sure the Ollama app is running! Error: {e}")
 
-    def _generate_text(self, prompt: str, max_new_tokens: int = 150) -> str:
-        """Helper to call IBM Granite text generation API."""
-        
-        # If the client wasn't set up (because you didn't export the API key), we return a fake message
-        if not self.client:
-            return "[Mock Granite Response]: Configure GRANITE_API_KEY to generate real AI advice."
-            
-        # These parameters control how the AI thinks:
-        # - greedy: Picks the most likely next word (less creative, more factual)
-        # - max_new_tokens: How long the AI's response is allowed to be
-        # - repetition_penalty: Stops the AI from repeating the same sentence over and over
-        parameters = TextGenerationParameters(
-            decoding_method="greedy",
-            max_new_tokens=max_new_tokens,
-            repetition_penalty=1.05
-        )
-        
+    def _generate_text(self, prompt: str, max_tokens: int = 150) -> str:
+        """Helper to call the local Ollama Granite model API."""
         try:
-            # We send the prompt to IBM Granite and ask for a generation back
-            responses = list(self.client.text.generation.create(
-                model_id=self.model_id,
-                inputs=[prompt],
-                parameters=parameters
-            ))
+            # We use the generate endpoint (rather than chat) since we are passing a pre-formatted system prompt
+            response = ollama.generate(
+                model=self.model_id,
+                prompt=prompt,
+                options={
+                    "temperature": 0.1, # Greedy decoding (less creative, factual)
+                    "num_predict": max_tokens, # Equivalent to max_new_tokens
+                    "repeat_penalty": 1.05
+                }
+            )
             
-            # If the response was successful, we extract just the raw text
-            if responses and responses[0].results:
-                return responses[0].results[0].generated_text.strip()
+            if 'response' in response:
+                return response['response'].strip()
+                
+            return "Error: Could not extract AI advice from local Granite response."
             
-            return "Error: Could not extract AI advice from Granite response."
         except Exception as e:
-            print(f"Error connecting to IBM Granite: {e}")
-            return "Error: Connection failed."
+            logging.error(f"Error querying local Ollama model: {e}")
+            return f"Error: Failed to generate response from {self.model_id}."
 
     # =========================================================================
     # Feature 7 – Personalised Coaching with IBM Granite
@@ -88,9 +75,7 @@ class GraniteCoachingService:
         BR7.1: Generate coaching messages when inefficiencies exist.
         Links specific behaviour to fuel impact and provides a recommended improvement.
         """
-        # The prompt is split into [System], [User], and [Assistant]. 
-        # This is the required format to make Granite "roleplay" properly.
-        prompt = f"""[System]
+        prompt = f"""<|system|>
 You are a highly analytical and supportive AI driving coach.
 The user has just completed a trip with the following summary:
 - Duration: {trip_summary.get('duration_mins', 'Unknown')} minutes
@@ -105,18 +90,18 @@ Rules:
 1. Link the specific inefficient behaviours directly to their negative impact on fuel consumption.
 2. Provide a clear, actionable recommended improvement for their next trip.
 3. Keep the tone encouraging but informative. Do not use hardcoded templates; natural language only.
-[User]
+<|user|>
 Generate the coaching message.
-[Assistant]"""
+<|assistant|>"""
 
-        return self._generate_text(prompt, max_new_tokens=250)
+        return self._generate_text(prompt, max_tokens=250)
 
     def generate_positive_reinforcement(self, trip_summary: Dict[str, Any]) -> str:
         """
         BR7.2: Generate positive reinforcement when no inefficiencies exist.
         Includes a proactive suggestion to maintain efficient driving.
         """
-        prompt = f"""[System]
+        prompt = f"""<|system|>
 You are a highly encouraging AI driving coach.
 The user has just completed an excellent trip with ZERO major inefficiency events.
 
@@ -130,11 +115,11 @@ Rules:
 1. Congratulate them on their highly efficient driving with no major inefficiencies.
 2. Include at least one proactive, generalized suggestion or tip to help them maintain this fuel-efficient driving style in the future.
 3. Keep the tone very positive and motivating.
-[User]
+<|user|>
 Generate the positive reinforcement message.
-[Assistant]"""
+<|assistant|>"""
 
-        return self._generate_text(prompt, max_new_tokens=200)
+        return self._generate_text(prompt, max_tokens=200)
 
     # =========================================================================
     # Feature 10 – Fuel Strategy Advice and High-Level Guidance
@@ -145,16 +130,13 @@ Generate the positive reinforcement message.
         BR10.1: Summarise common inefficiency patterns across multiple trips.
         Identifies frequent inefficiency event types and generates a short natural-language summary.
         """
-        # Before asking the AI, we loop through all the trips in Python to count how 
-        # often each bad behavior (like 'Idling') happens. It's better to do the math in Python 
-        # than to force the AI to count things!
         event_frequencies = {}
         for trip in historical_trips:
             for event in trip.get("inefficiencies", []):
                 e_type = event.get("type", "Unknown")
                 event_frequencies[e_type] = event_frequencies.get(e_type, 0) + 1
                 
-        prompt = f"""[System]
+        prompt = f"""<|system|>
 You are a seasoned Fleet Analyst AI.
 Over a recent period, a driver completed several trips.
 Here is the frequency of inefficiency events detected across all these trips:
@@ -164,18 +146,18 @@ Task: Identify the most frequent inefficiency event types from the data above.
 Rules:
 1. Generate a short natural-language summary identifying these patterns.
 2. Explain what these repeated behaviors mean generally across multiple trips.
-[User]
+<|user|>
 Generate the summary of patterns.
-[Assistant]"""
+<|assistant|>"""
 
-        return self._generate_text(prompt, max_new_tokens=200)
+        return self._generate_text(prompt, max_tokens=200)
 
     def provide_high_level_recommendations(self, strategy_summary_text: str) -> str:
         """
         BR10.2: Provide high-level recommendations to reduce fuel usage based on the summary.
         Produces advice clearly distinct from trip-specific coaching messages.
         """
-        prompt = f"""[System]
+        prompt = f"""<|system|>
 You are an expert Fleet Strategy AI.
 The following is a summary of a driver's common inefficiency patterns across multiple trips:
 "{strategy_summary_text}"
@@ -184,29 +166,20 @@ Task: Produce at least one high-level strategy recommendation to reduce fuel ove
 Rules:
 1. These recommendations should be broader than per-trip feedback (e.g., long-term decisions regarding route selection, maintaining coasting distances, vehicle maintenance, or scheduling).
 2. The advice must be clearly distinct from trip-specific, real-time coaching messages. Focus on the big picture.
-[User]
+<|user|>
 Generate the high-level strategic recommendation.
-[Assistant]"""
+<|assistant|>"""
 
-        return self._generate_text(prompt, max_new_tokens=250)
+        return self._generate_text(prompt, max_tokens=250)
 
 
 # =========================================================================
 # Testing Block (Demonstration)
 # =========================================================================
 if __name__ == "__main__":
-    print("Initializing Granite Coaching Module...")
+    print("Initializing Offline Granite Coaching Module...")
     
-    # ----------------------------------------------------
-    # WHAT YOU NEED TO DO:
-    # ----------------------------------------------------
-    # When you want this to use the REAL AI, you must export these two variables 
-    # in your terminal before running this script:
-    # 
-    #   export GRANITE_API_KEY="your-actual-api-key"
-    #   export GRANITE_API_ENDPOINT="https://bam-api.res.ibm.com"  
-    # 
-    # If the variables aren't found, the code prints [Mock Granite Response] below.
+    # We no longer need to pass API keys, we just initialize it to hit localhost!
     service = GraniteCoachingService()
     
     # ---------------------------------------------------------
