@@ -46,3 +46,4 @@ ecogranite-coach/
 ├── data_samples/           # Small, anonymized KIT datasets for local testing
 ├── .gitignore
 └── README.md
+```
