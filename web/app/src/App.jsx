@@ -140,12 +140,6 @@ export default function App() {
       // send files for analysis and wait for response
       const analysisData = await analyseTrips(formData);
 
-      if (analysisData?.message) {
-        setAnalysisMessage(
-          `${analysisData.message}. The data from the analysis would be used for visualisations etc on other dashboard widgets TBA`
-        );
-      }
-
       // update trips state
       const tripData = analysisData.trips;
       setTrips(tripData);

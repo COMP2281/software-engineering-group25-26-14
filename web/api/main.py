@@ -110,6 +110,14 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
     await asyncio.sleep(1)
     import random
     events = ["high_rpm", "hard_braking", "harsh_throttle"]
+    confidence_levels = ["High", "Medium", "Low"]
+
+    scores_fuel, scores_rpm, scores_throttle, scores_braking = [random.randint(0, 100) for _ in range(4)]
+    efficiency_score = (scores_fuel + scores_rpm + scores_throttle + scores_braking) // 4
+
+    scores_fuel_2, scores_rpm_2, scores_throttle_2, scores_braking_2 = [random.randint(0, 100) for _ in range(4)]
+    efficiency_score_2 = (scores_fuel_2 + scores_rpm_2 + scores_throttle_2 + scores_braking_2) // 4
+
     test_data = [
         {
             "trip_id": "trip1",
@@ -117,31 +125,78 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
             "end_time": "2024-01-01T08:30:00",
             "vehicle_make": "Seat",
             "vehicle_model": "Leon",
-            "efficiency_score": random.randint(0, 100),
-            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
             "total_fuel_used": round(random.uniform(2.0, 10.0), 2),
+            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
+            "confidence": random.choice(confidence_levels),
+            "missing_data_percentage": round(random.uniform(0, 5), 2),
+            "imputed_value_count": random.randint(0, 20),
+            "thresholds": {
+                "high_rpm": 3000,
+                "harsh_throttle": 3.0,
+                "hard_braking": 3.0
+            },
             "events": [
                 {
                     "type": random.choice(events),
+                    "timestamp": "2024-01-01T08:10:00",
+                    "duration": random.randint(1, 10),
                 },
                 {
                     "type": random.choice(events),
+                    "timestamp": "2024-01-01T08:20:00",
+                    "duration": random.randint(1, 10),
                 }
+            ],
+            "efficiency_score": efficiency_score,
+            "score_breakdown": {
+                "fuel_economy": scores_fuel,
+                "high_rpm": scores_rpm,
+                "harsh_throttle": scores_throttle,
+                "hard_braking": scores_braking
+            },
+            "ai_feedback": [
+                "Negative: Try to avoid high RPMs as they can decrease fuel efficiency.",
+                "Positive: You had no hard braking events, which is great for fuel economy! Keep it up!"
             ]
         },
-        {
+                {
             "trip_id": "trip2",
             "start_time": "2024-01-02T09:00:00",
-            "end_time": "2024-01-02T09:45:00",
-            "vehicle_make": "Volkswagen",
+            "end_time": "2024-01-02T09:30:00",
+            "vehicle_make": "Wolkswagen",
             "vehicle_model": "Golf",
-            "efficiency_score": random.randint(0, 100),
-            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
             "total_fuel_used": round(random.uniform(2.0, 10.0), 2),
+            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
+            "confidence": random.choice(confidence_levels),
+            "missing_data_percentage": round(random.uniform(0, 5), 2),
+            "imputed_value_count": random.randint(0, 20),
+            "thresholds": {
+                "high_rpm": 3000,
+                "harsh_throttle": 3.0,
+                "hard_braking": 3.0
+            },
             "events": [
                 {
                     "type": random.choice(events),
+                    "timestamp": "2024-01-02T09:10:00",
+                    "duration": random.randint(1, 10),
+                },
+                {
+                    "type": random.choice(events),
+                    "timestamp": "2024-01-02T09:20:00",
+                    "duration": random.randint(1, 10),
                 }
+            ],
+            "efficiency_score": efficiency_score_2,
+            "score_breakdown": {
+                "fuel_economy": scores_fuel_2,
+                "high_rpm": scores_rpm_2,
+                "harsh_throttle": scores_throttle_2,
+                "hard_braking": scores_braking_2
+            },
+            "ai_feedback": [
+                "Negative: Try to avoid harsh throttle events as they can decrease fuel efficiency.",
+                "Positive: Your fuel economy was good! Keep up the good work!"
             ]
         }
     ]

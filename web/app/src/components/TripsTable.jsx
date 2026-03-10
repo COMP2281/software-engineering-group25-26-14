@@ -1,3 +1,6 @@
+import { useState } from "react";
+import TripDetailModal from "./TripDetailModal";
+
 export default function TripsTable({
   trips,
   sortColumn,
@@ -13,6 +16,9 @@ export default function TripsTable({
   selectedModel,
   setSelectedModel,
 }) {
+  // state for currently selected trip in the modal
+  const [selectedTrip, setSelectedTrip] = useState(null);
+
   // helper function to format timestamps
   const formatTime = (timestamp) => {
     if (!timestamp) return "-";
@@ -284,7 +290,8 @@ export default function TripsTable({
             sortedTrips.map((trip) => (
               <tr
                 key={trip.trip_id}
-                className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                onClick={() => setSelectedTrip(trip)}
               >
                 <Cell>{formatTime(trip.start_time)}</Cell>
                 <Cell hideClasses="hidden lg:table-cell">
@@ -302,6 +309,14 @@ export default function TripsTable({
           )}
         </tbody>
       </table>
+
+      {/* Trip Detail Modal */}
+      <TripDetailModal
+        trip={selectedTrip}
+        onClose={() => setSelectedTrip(null)}
+        formatTime={formatTime}
+      />
+
     </div>
   );
 }

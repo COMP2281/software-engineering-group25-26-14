@@ -128,12 +128,13 @@ export default function UploadWidget({
                 </div>
             )}
 
-            {/* Analysis complete message */}
-            {analysisMessage && (
-                <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+            {/* Analysis error message only */}
+            {analysisMessage?.startsWith("Analysis failed:") && (
+            <p className="text-sm text-red-600 dark:text-red-400 mt-2">
                 {analysisMessage}
-                </p>
+            </p>
             )}
+            
             </div>
         )}
         </div>
