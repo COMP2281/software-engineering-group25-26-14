@@ -119,6 +119,7 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
             "vehicle_model": "Leon",
             "efficiency_score": random.randint(0, 100),
             "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
+            "total_fuel_used": round(random.uniform(2.0, 10.0), 2),
             "events": [
                 {
                     "type": random.choice(events),
@@ -136,6 +137,7 @@ async def analyse_trips(files: List[UploadFile] = File(...)):
             "vehicle_model": "Golf",
             "efficiency_score": random.randint(0, 100),
             "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
+            "total_fuel_used": round(random.uniform(2.0, 10.0), 2),
             "events": [
                 {
                     "type": random.choice(events),

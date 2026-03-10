@@ -66,7 +66,7 @@ export default function UploadWidget({
             ${
             disableUploadButton
                 ? "bg-slate-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 cursor-pointer"
             }`}
         >
             {uploadState === "uploading" ? "Uploading..." : "Upload"}

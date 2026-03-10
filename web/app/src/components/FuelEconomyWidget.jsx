@@ -31,7 +31,7 @@ export default function FuelEconomyWidget({
         {/* Toggle unit button */}
         <button
             onClick={toggleUnit}
-            className="rounded bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600 min-w-[160px]"
+            className="rounded bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600 cursor-pointer min-w-[160px]"
         >
             Show in {unit === "L/100km" ? "mpg" : "L/100km"}
         </button>

@@ -8,6 +8,7 @@ import FuelEconomyWidget from "./components/FuelEconomyWidget";
 import InefficientEventsWidget from "./components/InefficientEventsWidget";
 import NewWidget from "./components/NewWidget";
 import Sidebar from "./components/Sidebar";
+import TripsTable from "./components/TripsTable";
 
 // import API functions
 import { uploadFiles, analyseTrips } from "./services/api";
@@ -44,6 +45,18 @@ export default function App() {
   const scoreHighThreshold = 80;  // above this score, show green
 
   const [fuelEconomy, setFuelEconomy] = useState(null); // average fuel economy across all trips
+
+  // states for sorting
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  // states for filtering
+  const [startDate, setStartDate] = useState("2024-01-01");  // default start date of 1st Jan 2024
+  const [endDate, setEndDate] = useState(() =>  // default end date of today
+    new Date().toISOString().split("T")[0]
+  );
+  const [selectedMake, setSelectedMake] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
 
   // event counts across all trips
   const [eventCounts, setEventCounts] = useState({
@@ -268,10 +281,23 @@ export default function App() {
           )}
 
           {currentPage === "trips" && (
-            <div className="flex flex-col">
-              <p>This page will show trips</p>
-            </div>
+            <TripsTable
+              trips={trips}
+              sortColumn={sortColumn}
+              setSortColumn={setSortColumn}
+              sortDirection={sortDirection}
+              setSortDirection={setSortDirection}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              selectedMake={selectedMake}
+              setSelectedMake={setSelectedMake}
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+            />
           )}
+
         </main>
       </div>
     </div>
