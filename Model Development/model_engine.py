@@ -1,3 +1,5 @@
+import pandas as pd
+
 from behaviour_detection import detect_driver_behaviour
 from scoring_model import compute_efficiency_score
 from efficiency_metrics import compute_trip_metrics
@@ -5,6 +7,14 @@ from ai_context import generate_ai_context
 
 
 def analyse_trip(df):
+
+    # Clean timestamp column
+    if "Timestamp" in df.columns:
+        df["Timestamp"] = pd.to_datetime(
+            df["Timestamp"],
+            errors="coerce",
+            utc=True
+        )
 
     behaviour_events = detect_driver_behaviour(df)
 

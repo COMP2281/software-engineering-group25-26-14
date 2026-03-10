@@ -10,22 +10,24 @@ def detect_driver_behaviour(df):
 
     events = []
 
-    events += segment_event(
-        df,
-        lambda r: r["RPM"] > HIGH_RPM_THRESHOLD,
-        "high_rpm"
-    )
+    if "RPM" in df.columns:
+        events += segment_event(
+            df,
+            lambda r: r["RPM"] > HIGH_RPM_THRESHOLD,
+            "high_rpm"
+        )
 
-    events += segment_event(
-        df,
-        lambda r: r["acceleration"] > HARSH_ACCEL_THRESHOLD,
-        "harsh_throttle"
-    )
+    if "acceleration" in df.columns:
+        events += segment_event(
+            df,
+            lambda r: r["acceleration"] > HARSH_ACCEL_THRESHOLD,
+            "harsh_throttle"
+        )
 
-    events += segment_event(
-        df,
-        lambda r: r["acceleration"] < HARD_BRAKE_THRESHOLD,
-        "hard_braking"
-    )
+        events += segment_event(
+            df,
+            lambda r: r["acceleration"] < HARD_BRAKE_THRESHOLD,
+            "hard_braking"
+        )
 
     return events

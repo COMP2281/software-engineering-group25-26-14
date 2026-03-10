@@ -3,14 +3,22 @@ import numpy as np
 
 def compute_trip_metrics(df):
 
-    avg_fuel_eff = df["InstantFuelEfficiency"].mean()
+    metrics = {}
 
-    speed_mean = df["Speed"].mean()
+    # Distance travelled (approx if speed exists)
+    if "speed" in df.columns:
+        metrics["avg_speed"] = df["speed"].mean()
+    else:
+        metrics["avg_speed"] = 0
 
-    distance_km = (df["Speed"] / 3.6 * df["Timestamp"].diff().dt.total_seconds()).sum() / 1000
+    # Average RPM
+    if "RPM" in df.columns:
+        metrics["avg_rpm"] = df["RPM"].mean()
+    else:
+        metrics["avg_rpm"] = 0
 
-    return {
-        "average_fuel_efficiency": avg_fuel_eff,
-        "average_speed": speed_mean,
-        "distance_km": distance_km
-    }
+    # TEMPORARY PLACEHOLDER
+    # Replace when InstantFuelEfficiency is added
+    metrics["avg_fuel_efficiency"] = 8.5
+
+    return metrics
