@@ -1,71 +1,48 @@
+import os
 import pandas as pd
 from model_engine import analyse_trip
 
 
-def prepare_dataframe(df):
-    """
-    Prepares the dataframe so the behaviour model can run.
-    Adds acceleration and other derived values.
-    """
-
-    # convert timestamps
-    df["Timestamp"] = pd.to_datetime(df["Timestamp"])
-
-    # convert speed to meters per second
-    df["speed_mps"] = df["Speed"] / 3.6
-
-    # calculate time difference
-    df["time_diff"] = df["Timestamp"].diff().dt.total_seconds()
-
-    # calculate speed difference
-    df["speed_diff"] = df["speed_mps"].diff()
-
-    # calculate acceleration
-    df["acceleration"] = df["speed_diff"] / df["time_diff"]
-
-    return df
-
-
 def main():
 
-    # path to your test dataset
-    csv_path = "../data/2018-02-28_Seat_Leon_S_RT_Normal.csv"
+    print("Starting trip analysis...\n")
 
-    print("Loading dataset...")
+    # Get the directory where this script is located
+    base_dir = os.path.dirname(os.path.abspath(__file__))
 
-    df = pd.read_csv(csv_path)
+    # Path to data folder
+    data_dir = os.path.join(base_dir, "..", "data")
 
-    print("Preparing dataframe...")
+    if not os.path.exists(data_dir):
+        print("ERROR: Data folder not found:", data_dir)
+        return
 
-    df = prepare_dataframe(df)
+    # Get all CSV files
+    trip_files = [f for f in os.listdir(data_dir) if f.endswith(".csv")]
 
-    print("Running model...")
+    if not trip_files:
+        print("No CSV trip files found in:", data_dir)
+        return
 
-    result = analyse_trip(df)
+    print(f"Found {len(trip_files)} trip files\n")
 
-    print("\n==============================")
-    print("MODEL RESULTS")
-    print("==============================\n")
+    for file in trip_files:
 
-    print("Efficiency Score:")
-    print(result["efficiency_score"])
+        csv_path = os.path.join(data_dir, file)
 
-    print("\nScore Breakdown:")
-    print(result["score_breakdown"])
+        print(f"Processing trip: {file}")
 
-    print("\nTrip Metrics:")
-    print(result["trip_metrics"])
+        try:
+            df = pd.read_csv(csv_path)
 
-    print("\nNumber of Events Detected:")
-    print(len(result["events"]))
+            result = analyse_trip(df)
 
-    print("\nFirst 5 Events:")
-    print(result["events"][:5])
+            print("Result:", result)
 
-    print("\nAI Context (for Granite AI):")
-    print(result["ai_context"])
+        except Exception as e:
+            print(f"Error processing {file}: {e}")
 
-    print("\nModel run completed successfully.")
+        print("-" * 40)
 
 
 if __name__ == "__main__":

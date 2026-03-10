@@ -1,7 +1,7 @@
-from .behaviour_detection import detect_driver_behaviour
-from .scoring_model import compute_efficiency_score
-from .efficiency_metrics import compute_trip_metrics
-from .ai_context import generate_ai_context
+from behaviour_detection import detect_driver_behaviour
+from scoring_model import compute_efficiency_score
+from efficiency_metrics import compute_trip_metrics
+from ai_context import generate_ai_context
 
 
 def analyse_trip(df):

@@ -1,4 +1,4 @@
-from .event_segmentation import segment_event
+from event_segmentation import segment_event
 
 
 HIGH_RPM_THRESHOLD = 3000
