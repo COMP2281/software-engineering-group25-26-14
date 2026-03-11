@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import sys
+import pandas as pd
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -21,6 +22,8 @@ def main():
 
     print(f"Files processed: {len(result.processed_datasets)}\n")
 
+    printed_schema = False
+
     for dataset in result.processed_datasets:
 
         if dataset.validation.status != "accepted":
@@ -33,6 +36,28 @@ def main():
 
             try:
                 df = trip.dataframe
+
+                if "Timestamp" in df.columns:
+                    df["Timestamp"] = pd.to_datetime(
+                        df["Timestamp"], format="%H:%M:%S.%f", errors="coerce"
+                    ).astype("datetime64[ns]")
+
+                if not printed_schema:
+
+                    print("\nColumns:")
+                    for col in df.columns:
+                        print(f" - {col}")
+
+                    print("\nColumn types:")
+                    print(df.dtypes)
+
+                    print("\nFirst 5 rows:")
+                    print(df.head())
+
+                    print("\n" + "=" * 60 + "\n")
+
+                    printed_schema = True
+
                 analysis = analyse_trip(df)
 
                 print("Result:", analysis)
