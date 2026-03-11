@@ -51,7 +51,7 @@ export default function App() {
   const [sortDirection, setSortDirection] = useState("asc");
 
   // states for filtering
-  const [startDate, setStartDate] = useState("2024-01-01");  // default start date of 1st Jan 2024
+  const [startDate, setStartDate] = useState("1900-01-01");  // default start date of 1st Jan 1900
   const [endDate, setEndDate] = useState(() =>  // default end date of today
     new Date().toISOString().split("T")[0]
   );
@@ -69,6 +69,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState("dashboard"); // current page for sidebar navigation
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false); // state to control mobile sidebar visibility
+
+  const [sessionId, setSessionId] = useState(null);  // session ID to track user session
 
   // sync theme
   useEffect(() => {
@@ -115,10 +117,11 @@ export default function App() {
 
       // if all uploads were successful, proceed to analysis step
       if (allSuccessful) {
+        setSessionId(data.session_id);
         setUploadState("analysing");
 
         // call analysis endpoint
-        await runAnalysis(formData);
+        await runAnalysis(data.session_id);
       }
 
     } catch (error) {
@@ -134,11 +137,13 @@ export default function App() {
   };
 
   // analayse files
-  const runAnalysis = async (formData) => {
+  const runAnalysis = async (sessionId) => {
     // wrap api call in try-catch to handle network errors
     try {
       // send files for analysis and wait for response
-      const analysisData = await analyseTrips(formData);
+      const analysisData = await analyseTrips({ session_id: sessionId });
+
+      console.log("Analysis response:", analysisData);
 
       // update trips state
       const tripData = analysisData.trips;

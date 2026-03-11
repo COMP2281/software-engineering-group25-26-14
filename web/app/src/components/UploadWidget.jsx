@@ -125,6 +125,9 @@ export default function UploadWidget({
                 <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     Analysing your trips...
                 </p>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Sit tight, this may take a moment depending on the number and size of your files.
+                </p>
                 </div>
             )}
 

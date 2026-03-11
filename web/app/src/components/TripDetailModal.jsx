@@ -10,7 +10,7 @@ export default function TripDetailModal({
     // state for collapsible sections
     const [showMetrics, setShowMetrics] = useState(true);
     const [showEfficiency, setShowEfficiency] = useState(true);
-    const [showEvents, setShowEvents] = useState(false);
+    const [showEvents, setShowEvents] = useState(true);
     const [showFeedback, setShowFeedback] = useState(true);
 
     // helper function to remove prefix from AI feedback

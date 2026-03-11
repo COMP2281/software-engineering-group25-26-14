@@ -12,10 +12,13 @@ export async function uploadFiles(formData) {
 }
 
 // run trip analysis on uploaded data
-export async function analyseTrips(formData) {
+export async function analyseTrips(payload) {
   const response = await fetch(`${API_BASE_URL}/analyse`, {
     method: "POST",
-    body: formData,
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
