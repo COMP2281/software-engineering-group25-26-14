@@ -68,7 +68,20 @@ def parse_vehicle_from_filename(filename: str) -> tuple[str | None, str | None, 
     return make, model, vehicle_id
 
 
-def parse_timestamps(timestamp_series: pd.Series) -> pd.Series:
+def parse_date_from_filename(filename: str) -> str | None:
+    stem = Path(filename).stem
+    parts = stem.split("_")
+    if len(parts) > 0:
+        date_part = parts[0]
+        try:
+            pd.to_datetime(date_part, format="%Y-%m-%d")
+            return date_part
+        except:
+            pass
+    return None
+
+
+def parse_timestamps(timestamp_series: pd.Series, date_str: str | None = None) -> pd.Series:
     parsed = pd.Series(pd.NaT, index=timestamp_series.index, dtype="datetime64[ns]")
     timestamp_text = timestamp_series.astype("string")
 
@@ -81,6 +94,12 @@ def parse_timestamps(timestamp_series: pd.Series) -> pd.Series:
             format=time_format,
             errors="coerce",
         )
+
+    if date_str and (parsed.dt.year == 1900).any():
+        parsed = parsed.where(parsed.dt.year != 1900, parsed.apply(
+            lambda x: x.replace(year=int(date_str.split("-")[0]), month=int(date_str.split("-")[1]), day=int(date_str.split("-")[2]))
+            if pd.notna(x) and x.year == 1900 else x
+        ))
 
     return parsed
 
@@ -234,7 +253,8 @@ class PreprocessingPipeline:
         source_path: str | None,
         vehicle: VehicleInfo,
     ) -> tuple[list[ProcessedTrip], list[str]]:
-        parsed_timestamps = parse_timestamps(dataframe["Timestamp"])
+        date_str = parse_date_from_filename(source_name)
+        parsed_timestamps = parse_timestamps(dataframe["Timestamp"], date_str)
         notes: list[str] = []
 
         if parsed_timestamps.isna().all():
@@ -272,7 +292,7 @@ class PreprocessingPipeline:
 
         processed_trips: list[ProcessedTrip] = []
         for segment_index, trip_frame in enumerate(trip_frames, start=1):
-            trip_timestamps = parse_timestamps(trip_frame["Timestamp"])
+            trip_timestamps = parse_timestamps(trip_frame["Timestamp"], date_str)
             valid_timestamps = trip_timestamps.dropna()
             trip_metadata = TripMetadata(
                 trip_id=f"{Path(source_name).stem}_trip_{segment_index:03d}",
