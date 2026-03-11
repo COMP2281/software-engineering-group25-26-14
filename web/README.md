@@ -27,7 +27,7 @@ Open a terminal in the project root and run:
 
 ```powershell
 py -m venv venv
-.\venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate
 pip install -r requirements.txt
 ```
 
@@ -60,7 +60,21 @@ npm install
 
 ### 3.1 Running the backend
 
-Open a terminal in the project root and run:
+Open a terminal in the project root. Ensure that the virtual environment is active:
+
+#### Windows (PowerShell)
+
+```powershell
+.\venv\Scripts\Activate
+```
+
+#### macOS/Linux
+
+```bash
+source venv/bin/activate
+```
+
+Then, run:
 
 ```powershell
 cd web\api

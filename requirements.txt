@@ -19,10 +19,16 @@ certifi==2026.2.25
     #   requests
 charset-normalizer==3.4.5
     # via requests
+click==8.3.1
+    # via uvicorn
+colorama==0.4.6
+    # via click
 fastapi==0.135.1
     # via -r requirements.in
 h11==0.16.0
-    # via httpcore
+    # via
+    #   httpcore
+    #   uvicorn
 httpcore==1.0.9
     # via httpx
 httpx==0.28.1
@@ -46,6 +52,8 @@ pydantic-core==2.41.5
     # via pydantic
 python-dateutil==2.9.0.post0
     # via pandas
+python-multipart==0.0.7
+    # via -r requirements.in
 requests==2.32.5
     # via -r requirements.in
 six==1.17.0
@@ -66,3 +74,5 @@ tzdata==2025.3
     # via pandas
 urllib3==2.6.3
     # via requests
+uvicorn==0.23.2
+    # via -r requirements.in
