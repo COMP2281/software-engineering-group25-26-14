@@ -87,9 +87,10 @@ The following inefficiency events were logged during the trip:
 
 Task: Provide a natural-language coaching message for the driver.
 Rules:
-1. Link the specific inefficient behaviours directly to their negative impact on fuel consumption.
-2. Provide a clear, actionable recommended improvement for their next trip.
-3. Keep the tone encouraging but informative. Do not use hardcoded templates; natural language only.
+1. MUST START your response with the exact word "Negative:" followed by a space.
+2. Link the specific inefficient behaviours directly to their negative impact on fuel consumption.
+3. Provide a clear, actionable recommended improvement for their next trip.
+4. Keep the tone encouraging but informative. Do not use hardcoded templates; natural language only.
 <|user|>
 Generate the coaching message.
 <|assistant|>"""
@@ -112,9 +113,10 @@ Trip Summary:
 
 Task: Provide a positive reinforcement message for the driver.
 Rules:
-1. Congratulate them on their highly efficient driving with no major inefficiencies.
-2. Include at least one proactive, generalized suggestion or tip to help them maintain this fuel-efficient driving style in the future.
-3. Keep the tone very positive and motivating.
+1. MUST START your response with the exact word "Positive:" followed by a space.
+2. Congratulate them on their highly efficient driving with no major inefficiencies.
+3. Include at least one proactive, generalized suggestion or tip to help them maintain this fuel-efficient driving style in the future.
+4. Keep the tone very positive and motivating.
 <|user|>
 Generate the positive reinforcement message.
 <|assistant|>"""
@@ -182,38 +184,93 @@ if __name__ == "__main__":
     # We no longer need to pass API keys, we just initialize it to hit localhost!
     service = GraniteCoachingService()
     
-    # ---------------------------------------------------------
-    # Test BR7.1: Coaching Message (with inefficiencies)
-    # ---------------------------------------------------------
-    trip_summary_bad = {"duration_mins": 45, "distance_km": 30, "fuel_consumed_liters": 4.5}
-    inefficiencies = [
-        {"type": "Harsh Braking", "count": 4, "severity": "High", "fuel_wasted_est": 0.3},
-        {"type": "Over-revving", "count": 2, "severity": "Medium", "fuel_wasted_est": 0.1}
-    ]
-    print("\n--- Testing BR7.1: Coaching with Inefficiencies ---")
-    print(service.generate_coaching_message(trip_summary_bad, inefficiencies))
+    import sys
+    from pathlib import Path
+    import pandas as pd
     
-    # ---------------------------------------------------------
-    # Test BR7.2: Positive Reinforcement (no inefficiencies)
-    # ---------------------------------------------------------
-    trip_summary_good = {"duration_mins": 35, "distance_km": 30, "fuel_consumed_liters": 2.8}
-    print("\n--- Testing BR7.2: Positive Reinforcement ---")
-    print(service.generate_positive_reinforcement(trip_summary_good))
+    # Add project root and Model Development to path
+    base_dir = Path(__file__).resolve().parent
+    project_root = base_dir.parent
+    sys.path.append(str(project_root))
+    sys.path.append(str(project_root / "Model Development"))
     
-    # ---------------------------------------------------------
-    # Test BR10.1: Summarise Patterns
-    # ---------------------------------------------------------
-    historical_trips = [
-        {"trip_id": 1, "inefficiencies": [{"type": "Idling"}, {"type": "Harsh Acceleration"}]},
-        {"trip_id": 2, "inefficiencies": [{"type": "Idling"}]},
-        {"trip_id": 3, "inefficiencies": [{"type": "Idling"}, {"type": "Harsh Braking"}]}
-    ]
-    print("\n--- Testing BR10.1: Summarise Inefficiency Patterns ---")
-    summary = service.summarize_inefficiency_patterns(historical_trips)
-    print(summary)
+    from data_pipeline.ingestion.preprocessing import PreprocessingPipeline
+    from model_engine import analyse_trip
     
-    # ---------------------------------------------------------
-    # Test BR10.2: High-Level Recommendations
-    # ---------------------------------------------------------
-    print("\n--- Testing BR10.2: High-Level Recommendations ---")
-    print(service.provide_high_level_recommendations(summary))
+    data_dir = project_root / "data"
+    pipeline = PreprocessingPipeline()
+    result = pipeline.ingest_path(data_dir)
+    
+    all_trips_events = []
+    
+    print(f"Files processed for real data: {len(result.processed_datasets)}\n")
+    
+    for dataset in result.processed_datasets:
+        if dataset.validation.status != "accepted":
+            continue
+            
+        for trip in dataset.trips:
+            try:
+                df = trip.dataframe
+                if "Timestamp" in df.columns:
+                    df["Timestamp"] = pd.to_datetime(
+                        df["Timestamp"], format="%H:%M:%S.%f", errors="coerce"
+                    ).astype("datetime64[ns]")
+                
+                analysis = analyse_trip(df)
+                
+                # compute trip summary
+                duration_mins = 0
+                if not df.empty and "Timestamp" in df.columns:
+                    duration_s = (df["Timestamp"].max() - df["Timestamp"].min()).total_seconds()
+                    duration_mins = duration_s / 60
+                
+                avg_speed = analysis["trip_metrics"].get("average_speed", 0)
+                distance_km = avg_speed * (duration_mins / 60)
+                avg_fuel = analysis["trip_metrics"].get("average_fuel_efficiency", 8.5)
+                fuel_consumed = (distance_km / 100) * avg_fuel
+                
+                trip_summary = {
+                    "duration_mins": round(duration_mins, 2),
+                    "distance_km": round(distance_km, 2),
+                    "fuel_consumed_liters": round(fuel_consumed, 2)
+                }
+                
+                # Format inefficiencies
+                events = analysis.get("events", [])
+                
+                event_counts = {}
+                for e in events:
+                    e_type = e["type"]
+                    duration = e.get("duration", 0)
+                    if e_type not in event_counts:
+                        event_counts[e_type] = {"count": 0, "total_duration": 0}
+                    event_counts[e_type]["count"] += 1
+                    event_counts[e_type]["total_duration"] += duration
+                
+                inefficiencies = [
+                    {"type": k, "count": v["count"], "total_duration_secs": round(v["total_duration"], 2)}
+                    for k, v in event_counts.items()
+                ]
+                
+                all_trips_events.append({"trip_id": trip.metadata.trip_id, "inefficiencies": inefficiencies})
+                
+                print(f"--- Trip {trip.metadata.trip_id} Analysis ---")
+                if len(inefficiencies) > 0:
+                    print("Testing BR7.1: Coaching with Inefficiencies")
+                    print(service.generate_coaching_message(trip_summary, inefficiencies))
+                else:
+                    print("Testing BR7.2: Positive Reinforcement")
+                    print(service.generate_positive_reinforcement(trip_summary))
+                print("-" * 40)
+                    
+            except Exception as e:
+                print(f"Error analyzing trip {trip.metadata.trip_id}: {e}")
+
+    if all_trips_events:
+        print("\n--- Testing BR10.1: Summarise Inefficiency Patterns (Real Data) ---")
+        summary = service.summarize_inefficiency_patterns(all_trips_events)
+        print(summary)
+        
+        print("\n--- Testing BR10.2: High-Level Recommendations (Real Data) ---")
+        print(service.provide_high_level_recommendations(summary))
