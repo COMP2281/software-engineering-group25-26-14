@@ -80,7 +80,6 @@ source venv/bin/activate
 Then, run:
 
 ```powershell
-ollama run granite3.1-dense:8b
 cd web\api
 python -m uvicorn main:app --port 5000
 ```

@@ -192,24 +192,24 @@ async def analyse_trips(request: AnalyseRequest):
 
             # map analyse_trip output to frontend expected format
             mapped_result = {
-                "trip_id": trip.metadata.trip_id,
-                "start_time": trip.metadata.start_timestamp,
-                "end_time": trip.metadata.end_timestamp,
-                "vehicle_make": trip.metadata.vehicle_make or "Unknown",
-                "vehicle_model": trip.metadata.vehicle_model or "Unknown",
-                "total_fuel_used": trip.dataframe.get("Fuel Used", 0).sum() if "Fuel Used" in trip.dataframe.columns else 0,
-                "average_fuel_economy": result["trip_metrics"].get("average_fuel_efficiency", 0),
-                "confidence": "High",  # could compute based on data quality
-                "missing_data_percentage": 0,  # optionally calculate missing data %
-                "imputed_value_count": 0,  # optionally count imputed values
-                "thresholds": {
+                "trip_id": getattr(trip.metadata, "trip_id", "Unknown"),
+                "start_time": getattr(trip.metadata, "start_timestamp", None),
+                "end_time": getattr(trip.metadata, "end_timestamp", None),
+                "vehicle_make": getattr(trip.metadata, "vehicle_make", "Unknown"),
+                "vehicle_model": getattr(trip.metadata, "vehicle_model", "Unknown"),
+                "total_fuel_used": trip_summary.get("total_fuel_used", 0),
+                "average_fuel_economy": trip_summary.get("average_fuel_economy", 0),
+                "confidence": result.get("confidence", "High"),
+                "missing_data_percentage": result.get("missing_data_percentage", 0),
+                "imputed_value_count": result.get("imputed_value_count", 0),
+                "thresholds": result.get("thresholds", {
                     "high_rpm": 3000,
                     "harsh_throttle": 3.0,
                     "hard_braking": -3.0,
-                },
-                "events": result["events"],
-                "efficiency_score": result["efficiency_score"],
-                "score_breakdown": result["score_breakdown"],
+                }),
+                "events": result.get("events", []),
+                "efficiency_score": result.get("efficiency_score", 0),
+                "score_breakdown": result.get("score_breakdown", {}),
                 "ai_feedback": ai_feedback,
             }
 
