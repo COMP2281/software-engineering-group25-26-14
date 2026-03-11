@@ -3,24 +3,120 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 
-import asyncio
+import io
+import pandas as pd
 
-def validate_csv_upload(contents: bytes):
-    """
-    this is for feature 1
-    this will call a function that checks if the csv file is in the correct format
-    """
+import sys
+from pathlib import Path
 
-    #valid, error = insert_csv_validation_function(contents)
+import uuid
+from pydantic import BaseModel
 
-    ## Test code
-    import random
-    if random.choice([True, False]):
-        valid, error = True, None
+# add project root to Python path
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.append(str(ROOT))
+sys.path.append(str(ROOT / "Model Development"))
+sys.path.append(str(ROOT / "AI Coaching"))
+
+from data_pipeline.ingestion.preprocessing import PreprocessingPipeline
+from model_engine import analyse_trip
+from granite_coaching import GraniteCoachingService
+
+UPLOAD_STORE = {}  # store uploaded validated trips in-memory, keyed by session_id
+
+# Pydantic model for analysis request
+class AnalyseRequest(BaseModel):
+    session_id: str
+
+granite_service = GraniteCoachingService()
+
+def validate_csv_upload(contents: bytes, filename: str):
+    '''
+    Validates the uploaded CSV file by attempting to parse it and then running it through the preprocessing pipeline's validation logic.
+    '''
+    try:
+        df = pd.read_csv(io.BytesIO(contents))
+
+    except Exception as e:
+        return False, f"CSV parsing failed: {str(e)}", None
+
+    pipeline = PreprocessingPipeline()
+    dataset = pipeline.ingest_dataframe(df, source_name=filename)
+    validation = dataset.validation
+
+    if validation.status == "accepted":
+        return True, None, dataset
+
+    if validation.missing_fields:
+        error = f"Missing columns: {', '.join(validation.missing_fields)}"
     else:
-        valid, error = False, "Missing Column: 'MAF' (test)"
+        error = "CSV failed validation"
 
-    return valid, error
+    return False, error, None
+
+def compute_trip_summary(df, analysis_result):
+    """
+    Compute a consistent trip summary including:
+      - duration_mins
+      - distance_km
+      - fuel_consumed_liters
+      - average_fuel_economy
+    """
+    # Ensure Timestamp column is datetime
+    if "Timestamp" in df.columns and not df["Timestamp"].empty:
+        df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
+        duration_secs = (df["Timestamp"].max() - df["Timestamp"].min()).total_seconds()
+        duration_mins = round(duration_secs / 60, 2)
+    else:
+        duration_mins = 0
+
+    trip_metrics = analysis_result.get("trip_metrics", {})
+    avg_speed = trip_metrics.get("average_speed", 0)
+    distance_km = round(avg_speed * (duration_mins / 60), 2)
+
+    # Calculate fuel consumed from distance and average fuel economy
+    avg_fuel = trip_metrics.get("average_fuel_efficiency", 8.5)
+    fuel_consumed = round((distance_km / 100) * avg_fuel, 2)
+
+    # Total fuel in dataframe if available (sum column)
+    total_fuel_used = df.get("Fuel Used", pd.Series(dtype=float)).sum() if "Fuel Used" in df.columns else fuel_consumed
+
+    return {
+        "duration_mins": duration_mins,
+        "distance_km": distance_km,
+        "fuel_consumed_liters": fuel_consumed,
+        "average_fuel_economy": avg_fuel,
+        "total_fuel_used": total_fuel_used
+    }
+
+def get_ai_feedback(trip_summary, events):
+    """
+    Generate AI feedback for a trip, using the precomputed trip_summary.
+    Positive feedback comes first, then negative feedback if any inefficiencies exist.
+    """
+    inefficiencies = [
+        {"type": e.get("type", "Unknown"),
+         "count": 1,
+         "total_duration_secs": e.get("duration", 0)}
+        for e in events
+    ]
+
+    feedback = []
+
+    # Positive feedback
+    try:
+        feedback.append(granite_service.generate_positive_reinforcement(trip_summary))
+    except Exception as e:
+        feedback.append(f"Error generating Positive feedback: {e}")
+
+    # Negative feedback (only if inefficiencies exist)
+    if inefficiencies:
+        try:
+            feedback.append(granite_service.generate_coaching_message(trip_summary, inefficiencies))
+        except Exception as e:
+            feedback.append(f"Error generating Negative feedback: {e}")
+
+    return feedback
 
 app = FastAPI()
 
@@ -38,177 +134,96 @@ async def root():
 
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
+    '''
+    Accepts multiple CSV files, and validates them using the validation logic from the data pipeline. 
+    Returns a list of results for each file, indicating whether it was valid or not, and indicates missing fields if applicable.
+    '''
     messages = []
     all_valid = True
+    session_id = str(uuid.uuid4())
+    stored_trips = []
 
     for file in files:
         contents = await file.read()
-        valid, error_message = validate_csv_upload(contents)
+        valid, error_message, dataset = validate_csv_upload(contents, file.filename)
 
         if valid:
             messages.append({"name": file.filename})
+            for trip in dataset.trips:
+                stored_trips.append(trip)
         else:
             all_valid = False
             messages.append({"name": file.filename, "error": error_message})
+    
+    if all_valid:
+        UPLOAD_STORE[session_id] = stored_trips
 
     return JSONResponse(
         status_code=status.HTTP_200_OK if all_valid else status.HTTP_400_BAD_REQUEST,
-        content={"files": messages},
+        content={
+            "files": messages,
+            "session_id": session_id if all_valid else None
+        }
     )
 
 @app.post("/analyse")
-async def analyse_trips(files: List[UploadFile] = File(...)):
+async def analyse_trips(request: AnalyseRequest):
     '''
-    this would call the function does the trip analysis
-    this function should return a list of dictionaries (one for each trip), with all the data needed for visualisations
-
-    format would be something like:
-    [
-        {
-            "trip_id": "trip1",
-            "start_time": "2024-01-01T08:00:00",
-            "end_time": "2024-01-01T08:30:00",
-            "vehicle_make": "Seat",
-            "vehicle_model": "Leon",
-            "total_fuel_used": 5.0,
-            "average_fuel_economy": 6.0,
-            "confidence": "High",
-            "missing_data_percentage": 1.5,
-            "imputed_value_count": 10,
-            "thresholds": {
-                "high_rpm": 3000,
-                "harsh_throttle": 3.0,
-                "hard_braking": 3.0
-            },
-            "models": {
-                ...
-            },
-            "events": [
-                "event1": {
-                    "type": "high_rpm",
-                    "timestamp": "2024-01-01T08:10:00",
-                    "duration": 5,
-                    "context": ...
-                },
-                ...
-            "efficiency_score": 85,
-            "score_breakdown": {
-                "fuel_economy": 90,
-                "high_rpm": 80,
-                "harsh_throttle": 85,
-                "hard_braking": 80
-            },
-            "ai_feedback": [
-                "Negative: Try to avoid high RPMs as they can decrease fuel efficiency.",
-                "Positive: You had no hard braking events, which is great for fuel economy! Keep it up!"
-                ...
-            ]
-        },
-        ...
-    ]
+    Analyses the uploaded trips for a given session_id, 
+    and returns the results in the expected format for the frontend, 
+    including AI feedback generated by the GraniteCoachingService.
     '''
 
-    #analysis_results = insert_analysis_function(files)
+    session_id = request.session_id
 
-    # test code
-    await asyncio.sleep(1)
-    import random
-    events = ["high_rpm", "hard_braking", "harsh_throttle"]
-    confidence_levels = ["High", "Medium", "Low"]
+    if session_id not in UPLOAD_STORE:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
 
-    scores_fuel, scores_rpm, scores_throttle, scores_braking = [random.randint(0, 100) for _ in range(4)]
-    efficiency_score = (scores_fuel + scores_rpm + scores_throttle + scores_braking) // 4
+    trip_objects = UPLOAD_STORE[session_id]
+    analysis_results = []
 
-    scores_fuel_2, scores_rpm_2, scores_throttle_2, scores_braking_2 = [random.randint(0, 100) for _ in range(4)]
-    efficiency_score_2 = (scores_fuel_2 + scores_rpm_2 + scores_throttle_2 + scores_braking_2) // 4
+    try:
+        for trip in trip_objects:
+            result = analyse_trip(trip.dataframe)
 
-    test_data = [
-        {
-            "trip_id": "trip1",
-            "start_time": "2024-01-01T08:00:00",
-            "end_time": "2024-01-01T08:30:00",
-            "vehicle_make": "Seat",
-            "vehicle_model": "Leon",
-            "total_fuel_used": round(random.uniform(2.0, 10.0), 2),
-            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
-            "confidence": random.choice(confidence_levels),
-            "missing_data_percentage": round(random.uniform(0, 5), 2),
-            "imputed_value_count": random.randint(0, 20),
-            "thresholds": {
-                "high_rpm": 3000,
-                "harsh_throttle": 3.0,
-                "hard_braking": 3.0
-            },
-            "events": [
-                {
-                    "type": random.choice(events),
-                    "timestamp": "2024-01-01T08:10:00",
-                    "duration": random.randint(1, 10),
+            trip_summary = compute_trip_summary(trip.dataframe, result)
+
+            ai_feedback = get_ai_feedback(trip_summary, result.get("events", []))
+
+            # map analyse_trip output to frontend expected format
+            mapped_result = {
+                "trip_id": trip.metadata.trip_id,
+                "start_time": trip.metadata.start_timestamp,
+                "end_time": trip.metadata.end_timestamp,
+                "vehicle_make": trip.metadata.vehicle_make or "Unknown",
+                "vehicle_model": trip.metadata.vehicle_model or "Unknown",
+                "total_fuel_used": trip.dataframe.get("Fuel Used", 0).sum() if "Fuel Used" in trip.dataframe.columns else 0,
+                "average_fuel_economy": result["trip_metrics"].get("average_fuel_efficiency", 0),
+                "confidence": "High",  # could compute based on data quality
+                "missing_data_percentage": 0,  # optionally calculate missing data %
+                "imputed_value_count": 0,  # optionally count imputed values
+                "thresholds": {
+                    "high_rpm": 3000,
+                    "harsh_throttle": 3.0,
+                    "hard_braking": -3.0,
                 },
-                {
-                    "type": random.choice(events),
-                    "timestamp": "2024-01-01T08:20:00",
-                    "duration": random.randint(1, 10),
-                }
-            ],
-            "efficiency_score": efficiency_score,
-            "score_breakdown": {
-                "fuel_economy": scores_fuel,
-                "high_rpm": scores_rpm,
-                "harsh_throttle": scores_throttle,
-                "hard_braking": scores_braking
-            },
-            "ai_feedback": [
-                "Negative: Try to avoid high RPMs as they can decrease fuel efficiency.",
-                "Positive: You had no hard braking events, which is great for fuel economy! Keep it up!"
-            ]
-        },
-                {
-            "trip_id": "trip2",
-            "start_time": "2024-01-02T09:00:00",
-            "end_time": "2024-01-02T09:30:00",
-            "vehicle_make": "Wolkswagen",
-            "vehicle_model": "Golf",
-            "total_fuel_used": round(random.uniform(2.0, 10.0), 2),
-            "average_fuel_economy": round(random.uniform(5.0, 10.0), 2),
-            "confidence": random.choice(confidence_levels),
-            "missing_data_percentage": round(random.uniform(0, 5), 2),
-            "imputed_value_count": random.randint(0, 20),
-            "thresholds": {
-                "high_rpm": 3000,
-                "harsh_throttle": 3.0,
-                "hard_braking": 3.0
-            },
-            "events": [
-                {
-                    "type": random.choice(events),
-                    "timestamp": "2024-01-02T09:10:00",
-                    "duration": random.randint(1, 10),
-                },
-                {
-                    "type": random.choice(events),
-                    "timestamp": "2024-01-02T09:20:00",
-                    "duration": random.randint(1, 10),
-                }
-            ],
-            "efficiency_score": efficiency_score_2,
-            "score_breakdown": {
-                "fuel_economy": scores_fuel_2,
-                "high_rpm": scores_rpm_2,
-                "harsh_throttle": scores_throttle_2,
-                "hard_braking": scores_braking_2
-            },
-            "ai_feedback": [
-                "Negative: Try to avoid harsh throttle events as they can decrease fuel efficiency.",
-                "Positive: Your fuel economy was good! Keep up the good work!"
-            ]
-        }
-    ]
+                "events": result["events"],
+                "efficiency_score": result["efficiency_score"],
+                "score_breakdown": result["score_breakdown"],
+                "ai_feedback": ai_feedback,
+            }
+
+            analysis_results.append(mapped_result)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500, 
+            content={"error": f"Analysis failed: {str(e)}", "trips": []}
+        )
 
     return JSONResponse(
         status_code=200,
         content={
             "message": "Analysis complete",
-            "trips": test_data
+            "trips": analysis_results
         }
     )

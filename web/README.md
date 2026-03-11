@@ -7,8 +7,9 @@ There are two parts:
 
 ## Prerequisites
 
-- Node.js 18+ and npm
-- Python 3.10+ (with `pip`)
+- **Node.js 18+ and npm**: https://nodejs.org/en/download
+- **Python 3.10+ (with `pip`)**: https://www.python.org/downloads/
+- **Ollama**: https://ollama.com/download
 
 ## 1. Clone the project and navigate to repository
 
@@ -29,6 +30,7 @@ Open a terminal in the project root and run:
 py -m venv venv
 .\venv\Scripts\Activate
 pip install -r requirements.txt
+ollama pull granite3.1-dense:8b
 ```
 
 If PowerShell blocks activation, run this once in the same terminal first:
@@ -43,6 +45,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+ollama pull granite3.1-dense:8b
 ```
 
 This installs all required python modules in a virtual environment.
@@ -77,6 +80,7 @@ source venv/bin/activate
 Then, run:
 
 ```powershell
+ollama run granite3.1-dense:8b
 cd web\api
 python -m uvicorn main:app --port 5000
 ```

@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "frontend": "npm run dev",
-    "backend": "cd ../api && venv\\Scripts\\python -m uvicorn main:app --reload --port 5000",
+    "backend": "cd ../.. && venv\\Scripts\\activate && cd web/api && python -m uvicorn main:app --reload --port 5000",
     "all": "concurrently \"npm run backend\" \"npm run frontend\""
   },
   "dependencies": {

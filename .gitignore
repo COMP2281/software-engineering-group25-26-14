@@ -3,3 +3,5 @@ data/
 .DS_Store
 __pycache__/
 requirements.in
+extra_requirements.txt
+generate_requirements.py
