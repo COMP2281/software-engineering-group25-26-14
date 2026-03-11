@@ -10,26 +10,25 @@ There are two parts:
 - Node.js 18+ and npm
 - Python 3.10+ (with `pip`)
 
-## 1. Clone the project and navigate to branch
+## 1. Clone the project and navigate to repository
 
 ```powershell
 git clone https://github.com/COMP2281/software-engineering-group25-26-14.git
-cd software-engineering-group25-26-14/
-git checkout Francis
+cd software-engineering-group25-26-14
 ```
 
-## 2. Set up and run the backend (`api`)
+## 2. Installation
+
+### 2.1 Backend installation
 
 Open a terminal in the project root and run:
 
-### Windows (PowerShell)
+#### Windows (PowerShell)
 
 ```powershell
-cd web\api
 py -m venv venv
-.\venv\Scripts\Activate.ps1
+.\venv\Scripts\Activate
 pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 5000
 ```
 
 If PowerShell blocks activation, run this once in the same terminal first:
@@ -38,36 +37,66 @@ If PowerShell blocks activation, run this once in the same terminal first:
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
-### macOS/Linux
+#### macOS/Linux
 
 ```bash
-cd web\api
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 5000
 ```
 
-Backend should now be running at `http://localhost:5000`.
-API docs are available at `http://localhost:5000/docs`.
+This installs all required python modules in a virtual environment.
 
-## 3. Set up and run the frontend (`app`)
+### 2.2 Frontend installation
 
-Open a second terminal in the root and run:
+Also from the project root, run:
 
 ```powershell
 cd web\app
 npm install
+```
+
+## 3. Running the app
+
+### 3.1 Running the backend
+
+Open a terminal in the project root. Ensure that the virtual environment is active:
+
+#### Windows (PowerShell)
+
+```powershell
+.\venv\Scripts\Activate
+```
+
+#### macOS/Linux
+
+```bash
+source venv/bin/activate
+```
+
+Then, run:
+
+```powershell
+cd web\api
+python -m uvicorn main:app --port 5000
+```
+
+Backend will be available at http://localhost:5000
+API docs are at http://localhost:5000/docs
+
+### 3.2 Running the frontend
+
+Open a second terminal in the root folder and run:
+
+```powershell
+cd web\app
 npm run dev
 ```
 
-Frontend should now be running at `http://localhost:5173`.
+Frontend will be available at http://localhost:5173
 
-## 4. Use the app
+## 4. Using the app
 
-Keep both terminals running:
+Keep both terminals running.
 
-- Terminal 1: backend (`uvicorn`)
-- Terminal 2: frontend (`vite`)
-
-Use the application at `http://localhost:5173`
+Open http://localhost:5173 in your browser to use the application.

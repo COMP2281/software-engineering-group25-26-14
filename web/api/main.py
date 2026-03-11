@@ -5,16 +5,6 @@ from typing import List
 
 import asyncio
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 def validate_csv_upload(contents: bytes):
     """
     this is for feature 1
@@ -31,6 +21,20 @@ def validate_csv_upload(contents: bytes):
         valid, error = False, "Missing Column: 'MAF' (test)"
 
     return valid, error
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+async def root():
+    return {"message": "Backend is running!"}
 
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
