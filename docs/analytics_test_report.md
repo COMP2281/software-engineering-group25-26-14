@@ -20,7 +20,7 @@ The following sub-systems and classes were isolated for **unit testing** and **i
 
 ### 2.1 Backend Unit Testing: Digital Twin Profiling
 
-| Test Case ID | `profile_unit_01` |
+| Test Case ID | `unit_test-profile-01` |
 | :--- | :--- |
 | **Description of test** | Application successfully builds a calibrated `VehicleProfile` from valid data |
 | **Related requirement document details** | Feature 3: Digital Twin Calibration |
@@ -32,7 +32,7 @@ The following sub-systems and classes were isolated for **unit testing** and **i
 | **Created by** | Othman |
 | **Test environment(s)** | Python 3.10+, `.venv` MacOS |
 
-| Test Case ID | `profile_unit_02` |
+| Test Case ID | `unit_test-profile-02` |
 | :--- | :--- |
 | **Description of test** | Application accurately rejects an empty dataset during calibration |
 | **Related requirement document details** | Feature 3 Error Handling |
@@ -44,7 +44,7 @@ The following sub-systems and classes were isolated for **unit testing** and **i
 | **Created by** | Othman |
 | **Test environment(s)** | Python 3.10+, `.venv` MacOS |
 
-| Test Case ID | `profile_unit_03` |
+| Test Case ID | `unit_test-profile-03` |
 | :--- | :--- |
 | **Description of test** | Application intercepts telemetry dataframes missing critical analytical variables |
 | **Related requirement document details** | Feature 3 Telematics Extraction |
@@ -58,7 +58,7 @@ The following sub-systems and classes were isolated for **unit testing** and **i
 
 ### 2.2 Backend Unit Testing: Fuel Estimation Engine
 
-| Test Case ID | `estim_unit_01` |
+| Test Case ID | `unit_test-estim-01` |
 | :--- | :--- |
 | **Description of test** | Application calculates exact fuel estimates from valid interval telemetry |
 | **Related requirement document details** | L/100km Fuel Estimation Module |
@@ -70,7 +70,7 @@ The following sub-systems and classes were isolated for **unit testing** and **i
 | **Created by** | Othman |
 | **Test environment(s)** | Python 3.10+, `.venv` MacOS |
 
-| Test Case ID | `estim_unit_02` |
+| Test Case ID | `unit_test-estim-02` |
 | :--- | :--- |
 | **Description of test** | Application gracefully handles trip segments exhibiting zero total distance. |
 | **Related requirement document details** | L/100km Fuel Estimation Mathematical Bounds |
@@ -82,7 +82,7 @@ The following sub-systems and classes were isolated for **unit testing** and **i
 | **Created by** | Othman |
 | **Test environment(s)** | Python 3.10+, `.venv` MacOS |
 
-| Test Case ID | `estim_unit_03` |
+| Test Case ID | `unit_test-estim-03` |
 | :--- | :--- |
 | **Description of test** | System rejects calculations if core physics metrics are missing |
 | **Related requirement document details** | L/100km Fuel Estimation Stability Requirement |
@@ -94,18 +94,72 @@ The following sub-systems and classes were isolated for **unit testing** and **i
 | **Created by** | Othman |
 | **Test environment(s)** | Python 3.10+, `.venv` MacOS |
 
+### 2.3 Backend Integration Testing
+
+| Test Case ID | `int_test-analytics-01` |
+| :--- | :--- |
+| **Description of test** | End-to-end data passage: `PreprocessingPipeline` successfully passes a full trip to `VehicleProfileBuilder` |
+| **Related requirement document details** | System Integration Architecture |
+| **Pre-requisites for test** | Target `.csv` exists; `PreprocessingPipeline` and Analytics domains are connected. |
+| **Test procedure** | 1. Ingest raw KIT `.csv` through the `PreprocessingPipeline`.<br>2. Pipeline yields a complete `ProcessedDataset`.<br>3. Dataset is natively passed directly into `VehicleProfileBuilder`. |
+| **Test material used** | Standard KIT OBD-II `.csv` file. |
+| **Expected result (test oracle)** | System successfully generates a `VehicleProfile` possessing the dynamic footprint of the original CSV hardware features without throwing type errors. |
+| **Comments** | Positive integration test proving the two distinct system modules communicate cleanly. |
+| **Created by** | Othman |
+| **Test environment(s)** | Python 3.10+, `.venv` MacOS |
+
+| Test Case ID | `int_test-pipeline-01` |
+| :--- | :--- |
+| **Description of test** | System handles malformed payloads dropped by the Pipeline to the Analytics Engine. |
+| **Related requirement document details** | Non-Functional Error Handling / Stability |
+| **Pre-requisites for test** | Mock integration link active between Pipeline and Analytics |
+| **Test procedure** | 1. Force the pipeline to output a `ProcessedDataset` with a corrupted dictionary (dropping the standard `RPM` column).<br>2. Pass object to `analyse_trip()` integration orchestrator. |
+| **Test material used** | Mock corrupted pipeline return data. |
+| **Expected result (test oracle)** | Analytics orchestrator gracefully catches the `ValueError`, returning an error dictionary formatted for the API rather than fatally crashing the Backend server. |
+| **Comments** | Core inverse testing verifying that the Analytics backend protects the main server thread. |
+| **Created by** | Othman |
+| **Test environment(s)** | Python 3.10+, `.venv` MacOS |
+
+| Test Case ID | `int_test-fuel-01` |
+| :--- | :--- |
+| **Description of test** | Complete end-to-end fuel efficiency orchestration triggering from API input to mathematical output. |
+| **Related requirement document details** | L/100km End-to-End Analytics |
+| **Pre-requisites for test** | Application backend is fully active and accepting traffic. |
+| **Test procedure** | 1. Send `.csv` route through `analyse_trip()`.<br>2. Internal orchestrator extracts `ProcessedTrip` and passes dynamically to `FuelEstimator`.<br>3. Validate final JSON analytical payload. |
+| **Test material used** | Full KIT OBD-II continuous trip dataset spanning 5+ minutes. |
+| **Expected result (test oracle)** | Final parsed backend analytical response successfully contains the property `estimated_fuel_l_100km` mapping to a realistic float value (e.g. 5.5). |
+| **Comments** | Verifies `FuelEstimator` connects successfully when nested deeply inside the main application run loop. |
+| **Created by** | Othman |
+| **Test environment(s)** | Python 3.10+, `.venv` MacOS |
+
+| Test Case ID | `int_test-fuel-02` |
+| :--- | :--- |
+| **Description of test** | System safely aborts fuel estimation when standard Pipeline CSVs omit core stoichiometric sensor properties. |
+| **Related requirement document details** | L/100km Functional Degradation |
+| **Pre-requisites for test** | End-to-end Analytics active |
+| **Test procedure** | 1. Submit a `.csv` stripped of the Mass Air Flow (`MAF`) column to the primary API.<br>2. Observe JSON output mapped from `FuelEstimator`. |
+| **Test material used** | `.csv` stripped of `MAF` values simulating a broken hardware sensor. |
+| **Expected result (test oracle)** | System continues to orchestrate other analytics (like event scoring) but assigns `null` to the `estimated_fuel_l_100km` property safely, avoiding an application-wide unrecoverable crash. |
+| **Comments** | Inverse integration testing for Fuel Estimation. Required to prove Graceful Degradation. |
+| **Created by** | Othman |
+| **Test environment(s)** | Python 3.10+, `.venv` MacOS |
+
 ---
 
 ## 3. Test Results Summary
 
 | Test Case ID | Test Component | Status | Fault Severity (if failed) | Iteration |
 | :--- | :--- | :--- | :--- | :--- |
-| `profile_unit_01` | Profile Builder: Dynamic Payload | **PASS** | N/A | Cycle 1 |
-| `profile_unit_02` | Profile Builder: Empty Rejection | **PASS** | N/A | Cycle 1 |
-| `profile_unit_03` | Profile Builder: Column Validation | **PASS** | N/A | Cycle 1 |
-| `estim_unit_01` | Estimator: Valid Aggregation | **PASS** | N/A | Cycle 1 |
-| `estim_unit_02` | Estimator: 0-Div Prevention | **PASS** | N/A | Cycle 1 |
-| `estim_unit_03` | Estimator: Validation Integrity | **PASS** | N/A | Cycle 1 |
+| `unit_test-profile-01` | Profile Builder: Dynamic Payload | **PASS** | N/A | Cycle 1 |
+| `unit_test-profile-02` | Profile Builder: Empty Rejection | **PASS** | N/A | Cycle 1 |
+| `unit_test-profile-03` | Profile Builder: Column Validation | **PASS** | N/A | Cycle 1 |
+| `unit_test-estim-01` | Estimator: Valid Aggregation | **PASS** | N/A | Cycle 1 |
+| `unit_test-estim-02` | Estimator: 0-Div Prevention | **PASS** | N/A | Cycle 1 |
+| `unit_test-estim-03` | Estimator: Validation Integrity | **PASS** | N/A | Cycle 1 |
+| `int_test-analytics-01` | Integration: Pipeline to Builder | **PASS** | N/A | Cycle 1 |
+| `int_test-pipeline-01` | Integration: Pipeline Crash Handing | **PASS** | N/A | Cycle 1 |
+| `int_test-fuel-01` | Integration: End-to-End Fuel Math | **PASS** | N/A | Cycle 1 |
+| `int_test-fuel-02` | Integration: Broken Sensor Drop | **PASS** | N/A | Cycle 1 |
 
 ---
 
