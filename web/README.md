@@ -55,7 +55,7 @@ This installs all required python modules in a virtual environment.
 Also from the project root, run:
 
 ```powershell
-cd web\app
+cd web/app
 npm install
 ```
 
@@ -80,7 +80,7 @@ source venv/bin/activate
 Then, run:
 
 ```powershell
-cd web\api
+cd web/api
 python -m uvicorn main:app --port 5000
 ```
 
@@ -92,7 +92,7 @@ API docs are at http://localhost:5000/docs
 Open a second terminal in the root folder and run:
 
 ```powershell
-cd web\app
+cd web/app
 npm run dev
 ```
 
