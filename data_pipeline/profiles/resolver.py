@@ -2,13 +2,12 @@ import logging
 import requests
 from typing import Optional
 from data_pipeline.profiles.models import VehicleSpecs
-from data_pipeline.profiles.exceptions import VehicleResolutionError
 
 logger = logging.getLogger(__name__)
 
 class VehicleSpecResolver:
     """
-    Resolves physical specifications of a vehicle using the NHTSA vPIC API
+    Resolves physical specifications of a vehicle using the Cars API by API Ninjas via RapidAPI
     or falls back to sensible defaults.
     """
 
@@ -18,49 +17,88 @@ class VehicleSpecResolver:
             api_timeout (int): Seconds to wait for API responses.
         """
         self.api_timeout = api_timeout
-        self.base_url = "https://vpic.nhtsa.dot.gov/api"
+        self.api_url = "https://cars-by-api-ninjas.p.rapidapi.com/v1/cars" 
+        # best I could find for free but missing key specs like mechanical redline and AFR, 
+        # so we have to make an educated guess based on fuel type, this affects fuel consumption estimates
+        self.api_headers = {
+            'x-rapidapi-key': "392dc1cfb6msh9e58f0921f76287p1881f4jsn316644a32712",
+            'x-rapidapi-host': "cars-by-api-ninjas.p.rapidapi.com"
+        }
 
-    def resolve_specs(self, make: str, model: str) -> VehicleSpecs:
+    def resolve_specs(self, make: str, model: str, year: int=None, model_extension: str=None) -> VehicleSpecs:
         """
-        Attempts to resolve vehicle specs by hitting an external API.
+        Attempts to resolve vehicle specs by hitting the external Cars API.
 
         Args:
             make (str): The manufacturer name.
             model (str): The model name.
+            year (int, optional): The model year.
+            model_extension (str, optional): Additional model details.
 
         Returns:
             VehicleSpecs: Physical specifications of the vehicle.
         """
         try:
-            # We attempt to hit the NHTSA API using the make
-            endpoint = f"{self.base_url}/vehicles/GetModelsForMake/{make}?format=json"
-            response = requests.get(endpoint, timeout=self.api_timeout)
+            params = {
+                "make": make,
+                "model": model
+            }
+            if year:
+                params["year"] = year
+
+            response = requests.get(
+                self.api_url, 
+                headers=self.api_headers, 
+                params=params, 
+                timeout=self.api_timeout
+            )
+            
+            # 1. Handle Rate Limits
+            if response.status_code == 429:
+                logger.error("Rate limit exceeded for API Ninjas Cars API.")
+                raise ValueError("API rate limit exceeded.")
+                
             response.raise_for_status()
             
             data = response.json()
-            results = data.get("Results", [])
-            
-            # Check if our model exists in the results. This API doesn't provide
-            # deep engine specs (like AFR, displacement, redline) just by Make/Model,
-            # so we use a robust fallback to sensible defaults for European/UK vehicles
-            # assuming typical properties if specific variables aren't found.
-            
-            model_found = any(str(model).lower() == str(r.get("Model_Name", "")).lower() for r in results)
-            
-            if not model_found:
-                raise VehicleResolutionError(f"Model '{model}' not found for make '{make}' in API.")
-            
-            # If we had a VIN, we'd use DecodeVinValues, but with Make/Model
-            # we simulate retrieving variables. In a fully-fleged API, we would extract:
-            # fuel_type, engine_displacement, mechanical_max_rpm, base_weight
-            
-            # Since the strict Make/Model endpoint does not return complex specs,
-            # we trigger the fallback mechanism. If we had an API that returns it:
-            # fuel_type = extracted_fuel_type
-            
-            raise VehicleResolutionError("API did not return detailed engine specifications (Displacement/Fuel/Weight) for Make/Model.")
+            if not data or len(data) == 0:
+                raise ValueError(f"No match found for {make} {model} in API.")
 
-        except (requests.RequestException, VehicleResolutionError, Exception) as e:
+            # 2. Extract Data (Use the first match)
+            car = data[0]
+            
+            raw_fuel_type = str(car.get("fuel_type")).lower()
+            # redline and AFR are approximated based on fuel type, as the API doesn't provide these directly
+            if "diesel" in raw_fuel_type:
+                fuel_type = "Diesel"
+                stoich_afr = 14.5
+                mechan_rpm = 4500 
+            elif "electricity" in raw_fuel_type or "electric" in raw_fuel_type:
+                fuel_type = "Electric"
+                stoich_afr = 0.0
+                mechan_rpm = 12000
+            else:
+                fuel_type = "Petrol"
+                stoich_afr = 14.7
+                mechan_rpm = 6500
+
+            # Displacement is in Liters in this API
+            displacement = float(car.get("displacement", 2.0))
+            
+            # API doesn't return base vehicle weights, so we still fall back
+            base_weight_kg = 1400.0
+
+            logger.info(f"Resolved specs for {make} {model} via API: {displacement}L {fuel_type}")
+
+            return VehicleSpecs(
+                fuel_type=fuel_type,
+                engine_displacement_l=displacement,
+                base_weight_kg=base_weight_kg,
+                mechanical_max_rpm=mechan_rpm,
+                stoichiometric_afr=stoich_afr
+            )
+
+        except (requests.RequestException, ValueError, Exception) as e:
             logger.warning(f"Failed to resolve full specs for {make} {model}: {e}. Using robust fallbacks.")
             return self._get_fallback_specs(make, model)
 
@@ -68,17 +106,11 @@ class VehicleSpecResolver:
         """
         Sensible industry defaults for European/UK-compatible models when API specs are unavailable.
         """
-        # Sensible Industry Defaults
+        # could lead to important inaccuracies down the line.
         fuel_type = "Petrol"
         engine_displacement_l = 2.0
-        
-        # Simple heuristic for mechanical redline based on fuel type
-        mechanical_max_rpm = 6500 if fuel_type == "Petrol" else 4500
-        
-        # Stoichiometric AFR: Petrol = 14.7, Diesel = 14.5
-        stoichiometric_afr = 14.7 if fuel_type == "Petrol" else 14.5
-        
-        # Average base weight of typical vehicle (~1400kg)
+        mechanical_max_rpm = 6500 
+        stoichiometric_afr = 14.7 
         base_weight_kg = 1400.0
         
         return VehicleSpecs(
