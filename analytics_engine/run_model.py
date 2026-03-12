@@ -14,7 +14,7 @@ def main():
     print("Starting trip analysis...\n")
 
     base_dir = Path(__file__).resolve().parent
-    data_dir = base_dir.parent / "data"
+    data_dir = base_dir.parent / "data_samples" / "10.35097-1130"/ "data" / "dataset" / "OBD-II-Dataset"
 
     pipeline = PreprocessingPipeline()
 
