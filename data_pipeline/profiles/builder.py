@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 from data_pipeline.profiles.models import VehicleProfile
 from data_pipeline.profiles.resolver import VehicleSpecResolver
-from data_pipeline.profiles.exceptions import CalibrationDataError
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +25,8 @@ class VehicleProfileBuilder:
         self, processed_dataset: Any, passenger_count: int = 1, cargo_weight_kg: float = 0.0
     ) -> VehicleProfile:
         """
+        THIS IS MAIN FUNCTION TO BE USED EXTERNALLY - Builds a full digital twin from a dataset processed by PreprocessingPipeline.
+        
         Builds a full digital twin from a dataset processed by PreprocessingPipeline.
 
         Args:
@@ -37,10 +38,10 @@ class VehicleProfileBuilder:
             VehicleProfile: Built and calibrated digital twin data.
 
         Raises:
-            CalibrationDataError: If the dataset has no valid trips or missing metrics.
+            ValueError: If the dataset has no valid trips or missing metrics.
         """
         if not processed_dataset.trips:
-            raise CalibrationDataError("ProcessedDataset has no trips. Cannot calibrate vehicle profile.")
+            raise ValueError("ProcessedDataset has no trips. Cannot calibrate vehicle profile.")
 
         make = processed_dataset.vehicle.make or "Unknown"
         model = processed_dataset.vehicle.model or "Unknown"
@@ -58,18 +59,18 @@ class VehicleProfileBuilder:
         all_trips_df = pd.concat([trip.dataframe for trip in processed_dataset.trips], ignore_index=True)
 
         if all_trips_df.empty:
-            raise CalibrationDataError("ProcessedDataset trips contain no valid rows.")
+            raise ValueError("ProcessedDataset trips contain no valid rows.")
             
         required_columns = {"RPM", "Speed"}
         if not required_columns.issubset(all_trips_df.columns):
-            raise CalibrationDataError(f"Missing required columns in dataset. Found: {list(all_trips_df.columns)}")
+            raise ValueError(f"Missing required columns in dataset. Found: {list(all_trips_df.columns)}")
 
         # Driver behaviour: typical max RPM (99th percentile across all trips regardless of speed)
         # Avoids noise/spike data at the absolute highest end.
         typical_max_rpm = all_trips_df["RPM"].quantile(0.99)
         
         if pd.isna(typical_max_rpm):
-            raise CalibrationDataError("RPM column contains invalid/NaN values preventing typical max RPM calculation.")
+            raise ValueError("RPM column contains invalid/NaN values preventing typical max RPM calculation.")
 
         # Idle RPM: Average RPM when Speed == 0
         idle_mask = all_trips_df["Speed"] == 0
