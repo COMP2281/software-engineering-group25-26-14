@@ -15,8 +15,8 @@ from pydantic import BaseModel
 # add project root to Python path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT))
-sys.path.append(str(ROOT / "Model Development"))
-sys.path.append(str(ROOT / "AI Coaching"))
+sys.path.append(str(ROOT / "analytics_engine"))
+sys.path.append(str(ROOT / "AI_Coaching"))
 
 from data_pipeline.ingestion.preprocessing import PreprocessingPipeline
 from analytics_engine.model_engine import analyse_trip
