@@ -19,8 +19,8 @@ sys.path.append(str(ROOT / "Model Development"))
 sys.path.append(str(ROOT / "AI Coaching"))
 
 from data_pipeline.ingestion.preprocessing import PreprocessingPipeline
-from model_engine import analyse_trip
-from granite_coaching import GraniteCoachingService
+from analytics_engine.model_engine import analyse_trip
+from AI_Coaching.granite_coaching import GraniteCoachingService
 
 UPLOAD_STORE = {}  # store uploaded validated trips in-memory, keyed by session_id
 
@@ -81,6 +81,7 @@ def compute_trip_summary(df, analysis_result):
     # Total fuel in dataframe if available (sum column)
     total_fuel_used = df.get("Fuel Used", pd.Series(dtype=float)).sum() if "Fuel Used" in df.columns else fuel_consumed
 
+    # TODO:this needs to be changed so that the return type matches what the analysis module returns.
     return {
         "duration_mins": duration_mins,
         "distance_km": distance_km,
