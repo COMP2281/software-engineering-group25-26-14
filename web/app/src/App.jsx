@@ -6,9 +6,9 @@ import UploadWidget from "./components/UploadWidget";
 import ScoreWidget from "./components/ScoreWidget";
 import FuelEconomyWidget from "./components/FuelEconomyWidget";
 import InefficientEventsWidget from "./components/InefficientEventsWidget";
-import NewWidget from "./components/NewWidget";
 import Sidebar from "./components/Sidebar";
 import TripsTable from "./components/TripsTable";
+import TripSummaryWidget from "./components/TripSummaryWidget";
 
 // import API functions
 import { uploadFiles, analyseTrips } from "./services/api";
@@ -45,6 +45,15 @@ export default function App() {
   const scoreHighThreshold = 80;  // above this score, show green
 
   const [fuelEconomy, setFuelEconomy] = useState(null); // average fuel economy across all trips
+
+  const [tripSummary, setTripSummary] = useState({
+    totalTrips: null,
+    vehicleCounts: {},
+    bestTripScore: null,
+    bestTripStartTime: null,
+    worstTripScore: null,
+    worstTripStartTime: null,
+  });
 
   // states for sorting
   const [sortColumn, setSortColumn] = useState(null);
@@ -143,8 +152,6 @@ export default function App() {
       // send files for analysis and wait for response
       const analysisData = await analyseTrips({ session_id: sessionId });
 
-      console.log("Analysis response:", analysisData);
-
       // update trips state
       const tripData = analysisData.trips;
       setTrips(tripData);
@@ -157,6 +164,9 @@ export default function App() {
 
       // update event counts state
       updateEventCounts(tripData);
+
+      // update trip summary state
+      updateTripSummary(tripData);
 
     } catch (error) {
       // handle network or unexpected errors
@@ -205,6 +215,46 @@ export default function App() {
     setEventCounts({
       ...counts,
       total,
+    });
+  };
+
+  // compute summary metrics for the trip summary widget
+  const updateTripSummary = (trips) => {
+    if (!trips.length) {
+      setTripSummary({
+        totalTrips: 0,
+        vehicleCounts: {},
+        bestTripScore: null,
+        bestTripStartTime: null,
+        worstTripScore: null,
+        worstTripStartTime: null,
+      });
+      return;
+    }
+
+    const vehicleCounts = trips.reduce((acc, trip) => {
+      const key = `${trip.vehicle_make} ${trip.vehicle_model}`;
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const bestTrip = trips.reduce(
+      (best, trip) => (trip.efficiency_score > best.efficiency_score ? trip : best),
+      trips[0]
+    );
+
+    const worstTrip = trips.reduce(
+      (worst, trip) => (trip.efficiency_score < worst.efficiency_score ? trip : worst),
+      trips[0]
+    );
+
+    setTripSummary({
+      totalTrips: trips.length,
+      vehicleCounts,
+      bestTripScore: bestTrip.efficiency_score,
+      bestTripStartTime: bestTrip.start_time ?? null,
+      worstTripScore: worstTrip.efficiency_score,
+      worstTripStartTime: worstTrip.start_time ?? null,
     });
   };
 
@@ -266,7 +316,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col md:flex-row md:col-span-2 lg:flex-col lg:col-span-1 gap-6">
                 <InefficientEventsWidget
                   totalEvents={eventCounts.total}
                   highRPM={eventCounts.high_rpm}
@@ -274,7 +324,15 @@ export default function App() {
                   harshThrottle={eventCounts.harsh_throttle}
                   className="flex-1 md:min-h-[340px]"
                 />
-                <NewWidget className="flex-1 md:min-h-[340px]" />
+                <TripSummaryWidget
+                  totalTrips={tripSummary.totalTrips}
+                  vehicleCounts={tripSummary.vehicleCounts}
+                  bestTripScore={tripSummary.bestTripScore}
+                  bestTripStartTime={tripSummary.bestTripStartTime}
+                  worstTripScore={tripSummary.worstTripScore}
+                  worstTripStartTime={tripSummary.worstTripStartTime}
+                  className="flex-1 md:min-h-[340px]"
+                />
               </div>
             </div>
           )}
