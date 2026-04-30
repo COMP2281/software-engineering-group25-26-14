@@ -1,5 +1,5 @@
 // base API URL
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "http://localhost:8000";
 
 // upload files to backend
 export async function uploadFiles(formData) {

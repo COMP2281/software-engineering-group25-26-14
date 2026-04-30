@@ -9,8 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "frontend": "npm run dev",
-    "backend": "cd ../.. && venv\\Scripts\\activate && cd web/api && python -m uvicorn main:app --reload --port 5000",
-    "all": "concurrently \"npm run backend\" \"npm run frontend\""
+    "backend-windows": "cd ../.. && venv\\Scripts\\activate && cd web/api && python -m uvicorn main:app --reload --port 8000",
+    "windows": "concurrently \"npm run backend-windows\" \"npm run frontend\""
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.2.0",

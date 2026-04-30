@@ -2,7 +2,7 @@
 
 There are two parts:
 
-- `api/`: FastAPI backend server (`http://localhost:5000`)
+- `api/`: FastAPI backend server (`http://localhost:8000`)
 - `app/`: React + Vite frontend (`http://localhost:5173`)
 
 ## Prerequisites
@@ -81,11 +81,11 @@ Then, run:
 
 ```powershell
 cd web/api
-python -m uvicorn main:app --port 5000
+python -m uvicorn main:app --port 8000
 ```
 
-Backend will be available at http://localhost:5000
-API docs are at http://localhost:5000/docs
+Backend will be available at http://localhost:8000
+API docs are at http://localhost:8000/docs
 
 ### 3.2 Running the frontend
 

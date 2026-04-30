@@ -1,49 +1,121 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/B06_mcpV)
+# Installation Instructions
 
-## Group Roles
+## Prerequisites
 
+- **Node.js 18+ and npm**: https://nodejs.org/en/download
+- **Python 3.10+ (with `pip`)**: https://www.python.org/downloads/
+- **Ollama**: https://ollama.com/download
 
-* *Tam: Data Engineer / Pipeline Manager (ETL)* - Features 1, 2, 9. Ingestion, validation, trip segmentation, data quality.
-* *Othman: Data Scientist / Analytics Engineer (Modeling)* - Features 3, 4. Vehicle calibration, fuel estimation models.
-* *Hamzah: Data Scientist / Backend (Behaviour)* - Features 5, 6. Inefficient behaviour detection, trip efficiency scoring.
-* *Martin: AI/LLM Engineer (Granite Integration)* - Features 7, 10. AI coaching messages, fuel strategy advice, prompt engineering.
-* *Francis: Frontend Developer (Dashboard)* - Feature 8. Dashboard, visual trends, UI/UX.
+## 1. Clone the project and navigate to repository
 
-### Repo Structure
-
-```text
-ecogranite-coach/
-│
-├── data_pipeline/          # Features 1, 2, 3, 9
-│   ├── ingestion/          # CSV validation, missing value handling
-│   ├── segmentation/       # Trip splitting (10-min gaps), vehicle identification
-│   └── profiles/           # Vehicle threshold calibrations
-│
-├── analytics_engine/       # Features 4, 5, 6
-│   ├── fuel_estimation/    # Fuel usage models, L/100km calculations
-│   ├── event_detection/    # High-RPM, harsh throttle, hard braking logic
-│   └── scoring/            # 0-100 efficiency score logic
-│
-├── ai_coaching/            # Features 7, 10
-│   ├── granite_client/     # API wrappers for IBM Granite
-│   └── prompts/            # Templates for trip feedback & strategy advice
-│
-├── backend/                # API connecting the pipeline/AI to the Frontend
-│   ├── routes/             # REST/GraphQL endpoints for the dashboard
-│   ├── database/           # SQLite/PostgreSQL for storing processed trips & metadata
-│   └── core/               # App configuration, logging, and schemas
-│
-├── frontend/               # Feature 8
-│   ├── components/         # Reusable UI widgets (charts, scorecards)
-│   ├── pages/              # Trip Dashboard, Detailed Trip View
-│   └── services/           # API fetching logic
-│
-├── tests/                  # Automated tests based on your Gherkin scenarios
-│   ├── unit/               
-│   └── integration/        
-│
-├── docs/                   # Markdown files, API docs, and Agile sprint logs
-├── data_samples/           # Small, anonymized KIT datasets for local testing
-├── .gitignore
-└── README.md
+```powershell
+git clone https://github.com/COMP2281/software-engineering-group25-26-14.git
+cd software-engineering-group25-26-14
 ```
+
+## 2. Set up Ollama
+
+Check if Ollama is running:
+
+```powershell
+ollama list
+```
+
+If this shows a list of models (or even an empty list), Ollama is running. 
+
+If you get a connection error, start Ollama manually:
+
+```powershell
+ollama serve
+```
+
+Then download the required model (this may take some time, but only needs to be done once):
+```powershell
+ollama pull granite3.1-dense:8b
+```
+
+You can run `ollama list` again to confirm the model is installed.
+
+Keep Ollama running. The backend will connect to it at http://localhost:11434.
+
+## 3. Backend installation
+
+Open a terminal in the project root and run:
+
+### Windows (PowerShell)
+
+```powershell
+py -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+If PowerShell blocks script execution, run this once in the same terminal first. This only changes the policy for the current session:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+### macOS/Linux
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+This installs all required python modules in a virtual environment.
+
+## 4. Frontend installation
+
+Also from the project root, run:
+
+```powershell
+cd web/app
+npm install
+```
+
+This installs the required node modules. 
+
+## 5. Running the backend
+
+Open a terminal in the project root. Ensure that the virtual environment is active:
+
+### Windows (PowerShell)
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+### macOS/Linux
+
+```bash
+source venv/bin/activate
+```
+
+Then, run:
+
+```powershell
+cd web/api
+python -m uvicorn main:app --port 8000
+```
+
+The backend will now be available at http://localhost:8000.
+The API docs are at http://localhost:8000/docs.
+
+## 6. Running the frontend
+
+Open a second terminal in the root folder and run:
+
+```powershell
+cd web/app
+npm run dev
+```
+
+The frontend will be available at http://localhost:5173.
+
+## 7. Using the app
+
+Keep both terminals running.
+
+Open http://localhost:5173 in your browser to use the application.
